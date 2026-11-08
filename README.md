@@ -13,7 +13,7 @@
 
 ```powershell
 # WPF 屏保（Windows）
-powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File src\build.ps1
 
 # 网页版（任何系统）
 python -m http.server 8899 --bind 127.0.0.1 --directory web
@@ -32,7 +32,7 @@ cd electron; npm i; npm start
 
 ```powershell
 # Windows screensaver
-powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File src\build.ps1
 
 # Web (any system)
 python -m http.server 8899 --bind 127.0.0.1 --directory web
