@@ -1,6 +1,10 @@
 # 全球传染病监测屏保 · Global Disease Watch
 
-![主界面](docs/images/hero.png)
+![轮播](docs/images/rotation.gif)
+
+![排行翻页](docs/images/ranking.gif)
+
+![传播链](docs/images/chain.gif)
 
 ```powershell
 # WPF 屏保（Windows）
