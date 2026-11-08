@@ -41,13 +41,10 @@ python -m http.server 8899 --bind 127.0.0.1 --directory web
 cd electron; npm i; npm start
 ```
 
-![Rotation](docs/images/rotation.gif)
 One report every 9 seconds: the globe eases to the new epicentre and the ranking follows.
 
-![Ranking paging](docs/images/ranking.gif)
 When the focus reaches the sixth row the whole page turns, highlight band and all.
 
-![Transmission chain](docs/images/chain.gif)
 The chain follows the disease: the current host path lights up across the nine host classes.
 
 Colours live in `Th.Use()` in `WallView.cs`.
