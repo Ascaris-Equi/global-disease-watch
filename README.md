@@ -41,6 +41,8 @@ python -m http.server 8899 --bind 127.0.0.1 --directory web
 cd electron; npm i; npm start
 ```
 
+The three loops above, in order:
+
 One report every 9 seconds: the globe eases to the new epicentre and the ranking follows.
 
 When the focus reaches the sixth row the whole page turns, highlight band and all.
