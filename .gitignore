@@ -1,0 +1,51 @@
+# build outputs
+*.exe
+*.scr
+*.off
+native/bin/
+target-build/
+# heavy / vendor
+virus/
+sensors/
+electron/node_modules/
+electron/dist/
+ResearchWall.Renderer.exe.WebView2/
+# internal ops (never publish)
+collector.ps1
+compute-queue.ps1
+compute-queue.vbs
+jobs.ps1
+refresh-map.ps1
+SourceParsing.ps1
+update-display.ps1
+wsl-jobs.ps1
+wsl-jobs.vbs
+wsl-ps.sh
+make-snapshot.ps1
+install.ps1
+uninstall.ps1
+ProjectDatabase.cs
+# internal data / config
+config.json
+config.json.*
+feeds.json
+previous-settings.json
+dist/
+_tmp/
+data/
+# internal docs
+交接报告.txt
+使用说明.txt
+docs/*.md
+
+backup-v1/
+backup-pipeline-v1/
+science/*.pdb
+science/*.bak*
+Microsoft.Web.WebView2.*.dll
+WebView2Loader.dll
+docs/子agent使用经验_20261106.md
+docs/生化危机视觉方案_20261106.md
+docs/调度效率分析_20261106.md
+docs/长跑阵亡根因_20261107.md
+docs/*.bak

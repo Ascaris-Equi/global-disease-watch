@@ -1,0 +1,61 @@
+{
+  "countries": {
+    "CPV": "Cabo Verde",
+    "GLP": "Guadeloupe",
+    "GUF": "French Guiana",
+    "HKG": "Hong Kong",
+    "MDV": "Maldives",
+    "MTQ": "Martinique",
+    "MYT": "Mayotte",
+    "REU": "Reunion",
+    "SGP": "Singapore"
+  },
+  "diseases": {
+    "不明原因肺炎": "Undiagnosed pneumonia",
+    "不明原因疾病": "Undetermined illness",
+    "埃博拉": "Ebola",
+    "马尔堡病": "Marburg disease",
+    "猴痘": "Mpox",
+    "霍乱": "Cholera",
+    "登革热": "Dengue",
+    "基孔肯雅热": "Chikungunya",
+    "寨卡": "Zika",
+    "黄热病": "Yellow fever",
+    "疟疾": "Malaria",
+    "西尼罗热": "West Nile fever",
+    "裂谷热": "Rift Valley fever",
+    "中东呼吸综合征": "MERS",
+    "炭疽": "Anthrax",
+    "克里米亚-刚果出血热": "Crimean-Congo haemorrhagic fever",
+    "落基山斑点热": "Rocky Mountain spotted fever",
+    "鼠疫": "Plague",
+    "拉沙热": "Lassa fever",
+    "汉坦病毒": "Hantavirus",
+    "尼帕病毒病": "Nipah virus disease",
+    "禽流感": "Avian influenza",
+    "流感": "Influenza",
+    "甲型肝炎": "Hepatitis A",
+    "戊型肝炎": "Hepatitis E",
+    "伤寒/副伤寒": "Typhoid / paratyphoid",
+    "脊髓灰质炎": "Polio",
+    "白喉": "Diphtheria",
+    "麻疹": "Measles",
+    "流脑": "Meningococcal disease",
+    "奥罗普切热": "Oropouche fever"
+  },
+  "periods": {
+    "本轮疫情累计": "This outbreak",
+    "2026 年累计": "2026 total",
+    "2026 年本土累计": "2026 local total"
+  },
+  "periodPatterns": [
+    {
+      "pattern": "^(\\d{4}) 年本土累计$",
+      "en": "{0} local total"
+    },
+    {
+      "pattern": "^(\\d{4}) 年累计$",
+      "en": "{0} total"
+    }
+  ]
+}

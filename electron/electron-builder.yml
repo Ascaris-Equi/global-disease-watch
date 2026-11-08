@@ -1,0 +1,67 @@
+appId: com.mjh.idleboard
+productName: MJH-IdleBoard
+copyright: MJH
+
+directories:
+  output: dist
+  buildResources: build
+
+# web/ 在 electron/ 的上一级。files 保留 ../web/** 以符合交付要求；
+# 但 electron-builder 的 files 只从 app 目录取，实际打包靠 extraResources。
+files:
+  - main.js
+  - ../web/**
+
+extraResources:
+  - from: ../web
+    to: web
+    filter:
+      - "**/*"
+
+asar: true
+compression: normal
+
+electronDownload:
+  mirror: https://npmmirror.com/mirrors/electron/
+
+win:
+  target:
+    - target: portable
+      arch:
+        - x64
+    - target: nsis
+      arch:
+        - x64
+
+portable:
+  artifactName: ${productName}-${version}-${arch}-portable.${ext}
+
+nsis:
+  artifactName: ${productName}-${version}-${arch}-setup.${ext}
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: MJH-IdleBoard
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  category: public.app-category.utilities
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
+dmg:
+  title: ${productName} ${version}
+
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  category: Utility
+  executableName: mjh-idleboard
+  artifactName: ${productName}-${version}-${arch}.${ext}

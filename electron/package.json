@@ -1,0 +1,24 @@
+{
+  "name": "mjh-idleboard-electron",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MJH-IdleBoard 屏保的 Electron 桌面封装（Windows / macOS / Linux）",
+  "author": "MJH",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "start:kiosk": "electron . --kiosk",
+    "dist": "electron-builder --win --mac --linux",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux",
+    "pack:dir": "electron-builder --win --dir"
+  },
+  "mjh": {
+    "kiosk": false
+  },
+  "devDependencies": {
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0"
+  }
+}
