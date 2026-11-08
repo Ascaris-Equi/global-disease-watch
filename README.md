@@ -1,7 +1,5 @@
 # 全球传染病监测屏保 · Global Disease Watch
 
-31 条疫情通报，每 9 秒轮播一条；地球、排行、传播链同步。纯本地渲染，数据每小时更新。
-
 ![主界面](docs/images/hero.png)
 
 ```powershell
@@ -22,8 +20,6 @@ cd electron; npm i; npm start
 数据源接入见 [DATA.md](DATA.md)。
 
 限制见 [LIMITED.md](LIMITED.md)。
-
-31 outbreak reports, one every 9 seconds; globe, ranking and transmission chain in step. Rendered locally, refreshed hourly.
 
 ```powershell
 # Windows screensaver
