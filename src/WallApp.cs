@@ -70,7 +70,7 @@ static class Program {
    int w=args.Length>3?Int32.Parse(args[3]):1920,h=args.Length>4?Int32.Parse(args[4]):1080;
    var view=new WallView(store){Width=w,Height=h};
    view.Measure(new Size(w,h));view.Arrange(new Rect(0,0,w,h));
-   view.Snap();for(int i=0;i<3;i++){view.Tick(t+i*.001);}view.Tick(t);view.UpdateLayout();
+   view.Snap();for(double u=t-3.0;u<t;u+=0.1){view.Tick(u);}for(int i=0;i<3;i++){view.Tick(t+i*.001);}view.Tick(t);view.UpdateLayout();
    var bmp=new RenderTargetBitmap(w,h,96,96,PixelFormats.Pbgra32);bmp.Render(view);
    var enc=new PngBitmapEncoder();enc.Frames.Add(BitmapFrame.Create(bmp));using(var f=File.Create(args[1]))enc.Save(f);
    return 0;

@@ -741,7 +741,7 @@ partial class WallView {
   string id=HeroId(e);
   if(id!=dzFocusId){
    // Ease to the new epicentre like the old full-screen scene; the first selection (and --render) snap.
-   globe.FocusOn(J.N(e,"lat"),J.N(e,"lon"),dzT,dzFocusId==""||snapped);
+   globe.FocusOn(J.N(e,"lat"),J.N(e,"lon"),dzT,dzFocusId=="");
    dzFocusId=id;
   }
   dzHeroId=id;
