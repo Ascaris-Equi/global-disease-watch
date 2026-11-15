@@ -853,14 +853,39 @@ GlobeView.prototype.setWorld = function (world) {
     for (const ring of (c.rings || [])) {
       const n = ring.length;
       if (n < 3) continue;
-      const vx = new Float32Array(n), vy = new Float32Array(n), vz = new Float32Array(n), lon = new Float32Array(n);
+      /* Antimeridian: a ring that jumps 180 degrees would otherwise fill the
+         sphere as a wedge. Cut it at +-180, inserting the crossing latitude on
+         both edges so each half closes along the meridian. */
+      const segs = [];
+      let cur = [];
       for (let i = 0; i < n; i++) {
-        const lo = ring[i][0] * Math.PI / 180, la = ring[i][1] * Math.PI / 180;
-        const cl = Math.cos(la);
-        vx[i] = cl * Math.sin(lo); vy[i] = Math.sin(la); vz[i] = cl * Math.cos(lo); lon[i] = ring[i][0];
+        const lon1 = ring[i][0], lat1 = ring[i][1];
+        if (cur.length) {
+          const lon0 = cur[cur.length - 1][0], lat0 = cur[cur.length - 1][1];
+          if (Math.abs(lon1 - lon0) > 180) {
+            const edge = lon1 > lon0 ? -180 : 180;
+            const t = (edge - lon0) / (lon1 - lon0 + (lon1 > lon0 ? 360 : -360));
+            const latC = lat0 + (lat1 - lat0) * t;
+            cur.push([edge, latC]);
+            segs.push(cur);
+            cur = [[-edge, latC]];
+          }
+        }
+        cur.push([lon1, lat1]);
       }
-      rings.push({ n: n, vx: vx, vy: vy, vz: vz, lon: lon });
-      if (n > this.maxN) this.maxN = n;
+      if (cur.length >= 3) segs.push(cur);
+      for (const seg of segs) {
+        if (seg.length < 3) continue;
+        const m = seg.length;
+        const vx = new Float32Array(m), vy = new Float32Array(m), vz = new Float32Array(m), lon = new Float32Array(m);
+        for (let k = 0; k < m; k++) {
+          const lo = seg[k][0] * Math.PI / 180, la = seg[k][1] * Math.PI / 180;
+          const cl = Math.cos(la);
+          vx[k] = cl * Math.sin(lo); vy[k] = Math.sin(la); vz[k] = cl * Math.cos(lo); lon[k] = seg[k][0];
+        }
+        rings.push({ n: m, vx: vx, vy: vy, vz: vz, lon: lon });
+        if (m > this.maxN) this.maxN = m;
+      }
     }
     if (rings.length) this.countries.push({ iso: c.iso, rings: rings });
   }
@@ -1011,40 +1036,40 @@ GlobeView.prototype.draw = function (time) {
   ctx.clip();
   ctx.fillStyle = this.gOcean;
   ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
-  ctx.fillStyle = '#4E575A';
+  ctx.fillStyle = '#243A50';
   ctx.fill(pBase);
-  ctx.fillStyle = '#576063';
+  ctx.fillStyle = '#2E4A63';
   ctx.fill(pMid);
   ctx.globalCompositeOperation = 'multiply';
   ctx.fillStyle = this.gLight;
   ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
   ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = '#320D0E';
+  ctx.fillStyle = '#4E1512';
   ctx.fill(pHigh);
 
   /* country borders: the wider low-alpha pass is the +0.5px compensation;
      the 0.65px pass keeps the hairline from turning into a smear. */
-  ctx.strokeStyle = 'rgba(216,212,200,0.06)';
+  ctx.strokeStyle = 'rgba(66,96,124,0.55)';
   ctx.lineWidth = 1.15;
   ctx.stroke(pStroke);
-  ctx.strokeStyle = 'rgba(216,212,200,0.16)';
+  ctx.strokeStyle = 'rgba(120,150,180,0.18)';
   ctx.lineWidth = 0.65;
   ctx.stroke(pStroke);
 
   /* featured countries: outer edge + an inner rim clipped to the fill, so the
      highlight keeps a sharp inner contour without any blur filter */
-  ctx.strokeStyle = 'rgba(192,57,43,0.62)';
+  ctx.strokeStyle = 'rgba(255,112,82,0.55)';
   ctx.lineWidth = 1;
   ctx.stroke(pHighStroke);
   ctx.save();
   ctx.clip(pHigh);
-  ctx.strokeStyle = 'rgba(214,72,56,0.55)';
+  ctx.strokeStyle = 'rgba(255,196,178,0.45)';
   ctx.lineWidth = 2.4;
   ctx.stroke(pHighStroke);
   ctx.restore();
 
   // graticule
-  ctx.strokeStyle = 'rgba(121,128,127,0.13)';
+  ctx.strokeStyle = 'rgba(24,44,64,0.85)';
   ctx.lineWidth = 0.7;
   const grid = new Path2D();
   for (let lon = -180; lon < 180; lon += 30) {
