@@ -666,7 +666,7 @@ function updateClock() {
 }
 function updateSyncLine() {
   let sync = '—';
-  const g = SNAP ? SNAP.generatedAt : null;
+  const g = SNAP ? (SNAP.generatedAt || SNAP.fetchedAt) : null;
   if (g) {
     const d = new Date(g);
     if (!isNaN(d.getTime())) {
