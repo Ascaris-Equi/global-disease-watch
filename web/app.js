@@ -245,7 +245,7 @@ let heroSwapTimer = null;
 let heroTimer = null;
 
 const $ = function (s) { return document.querySelector(s); };
-const LV_COLOR = ['#79807F', '#E0A048', '#C0392B'];
+const LV_COLOR = ['#79807F', '#C9A227', '#C0392B'];
 
 function t(k) {
   const d = UI[lang] || UI.en;
@@ -850,11 +850,11 @@ const GLOBE_WEBGL = true;              /* master switch: false → canvas-2d glo
 const TEX_W = 4096, TEX_H = 2048;      /* equirectangular texture, ~32 MB */
 const TEX_OCEAN = '#0A0C0D';
 const TEX_GRID = '#2B2419', TEX_GRID_PX = 2.6, TEX_GRID_DEG = 15;
-const TEX_LAND = '#22262A';
+const TEX_LAND = '#1B1F22';
 const TEX_COAST = '#4B5257', TEX_COAST_PX = 3.0;
-const TEX_L1_FILL = 'rgba(224,160,72,0.30)', TEX_L1_STROKE = 'rgba(224,160,72,0.85)';
-const TEX_L2_FILL = 'rgba(192,57,43,0.42)', TEX_L2_STROKE = 'rgba(255,112,82,0.9)';
-const TEX_HOT_FILL = 'rgba(255,112,82,0.88)', TEX_HOT_STROKE = '#FFD9CB', TEX_HOT_PX = 4.5;
+const TEX_L1_FILL = 'rgba(240,208,112,0.55)', TEX_L1_STROKE = 'rgba(255,232,168,0.95)';
+const TEX_L2_FILL = 'rgba(165,32,32,0.85)', TEX_L2_STROKE = 'rgba(224,58,42,0.95)';
+const TEX_HOT_FILL = 'rgba(172,26,26,0.95)', TEX_HOT_STROKE = '#FF5A45', TEX_HOT_PX = 4.5;
 /* the wpf light rig, straight from WallGlobe.cs */
 const GL_AMBIENT = [0.3608, 0.3922, 0.4549];   /* AmbientLight 92,100,116 */
 const GL_DIFFUSE = [0.7686, 0.7922, 0.8392];   /* DirectionalLight 196,202,214 */
