@@ -4,6 +4,9 @@
   --panel:#0A0B0B; --cell:#16191A;
   --sans:"Segoe UI","Microsoft YaHei UI","Microsoft YaHei","Noto Sans SC","PingFang SC","Hiragino Sans",sans-serif;
   --mono:"Consolas","Cascadia Mono","SFMono-Regular","Menlo","Noto Sans Mono",monospace;
+  /* notch / home-indicator insets in CSS px; app.js converts them to design px
+     for the portrait stage (viewport-fit=cover lets the page reach the edges) */
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden}
@@ -137,6 +140,9 @@ body.idle{cursor:none}
 .brand-tag{font-family:var(--mono);font-size:10px;line-height:12px;color:var(--steel);letter-spacing:.1em;white-space:nowrap}
 .agencies{position:absolute;right:32px;top:calc(26px + var(--pady,0px) * 0.5);font-family:var(--mono);font-size:10px;line-height:12px;color:var(--steel);letter-spacing:.1em}
 .clock{position:absolute;left:32px;top:calc(26px + var(--pady,0px) * 0.5);font-family:var(--mono);font-size:10px;line-height:12px;color:var(--steel);letter-spacing:.04em;font-variant-numeric:tabular-nums}
+/* the portrait layout moves the clock up into the top strip; the landscape
+   copy inside the bottom footer is the only one on screen there */
+.bar.top .clock{display:none}
 .sync{position:absolute;left:182px;top:calc(26px + var(--pady,0px) * 0.5);font-family:var(--mono);font-size:10px;line-height:12px;color:var(--steel);letter-spacing:.04em;white-space:nowrap}
 .sync .sep{color:#3A4141;margin:0 14px}
 
@@ -146,4 +152,98 @@ body.idle{cursor:none}
 .corner.tr{left:1878px;top:84px;border-right-width:1px;border-top-width:1px}
 .corner.bl{left:20px;top:974px;border-left-width:1px;border-bottom-width:1px}
 .corner.br{left:1878px;top:974px;border-right-width:1px;border-bottom-width:1px}
+
+/* =====================================================================
+   portrait / mobile layout
+   ---------------------------------------------------------------------
+   Breakpoint: `orientation: portrait` (equivalently aspect ratio < 1). The
+   stage stops being 1920x1080 and becomes a 1080-wide, 9:16-based design
+   (1080x1920 at the reference aspect) whose height is set by app.js to the
+   device; every band is placed from the custom properties it sets there:
+     --bar-h / --safe-top / --safe-bottom   top and bottom strips
+     --globe-left / --globe-w               globe band box
+     --globe-canvas-top / --globe-canvas-h  drawing box (taller than the band
+                                            so the arcs are not cut at 1.2R)
+     --hero-top / --hero-h / --watch-top / --watch-h
+   The landscape rules above are never touched: this block only applies while
+   the viewport is portrait.
+   ===================================================================== */
+@media (orientation: portrait), (max-aspect-ratio: 1/1) {
+  #stage{width:1080px;height:var(--stage-h,1920px)}
+
+  /* ---------- narrow top strip: brand + clock ---------- */
+  .bar{left:0;width:1080px;height:var(--bar-h,100px);display:flex;align-items:center;
+       justify-content:space-between;padding:0 32px;background:var(--black)}
+  .bar.top{top:0;height:calc(var(--bar-h,100px) + var(--safe-top,0px));
+           padding-top:var(--safe-top,0px);border-bottom:1px solid var(--hair)}
+  .brand{position:static;display:flex;align-items:baseline;gap:14px}
+  .brand-name{font-size:32px;line-height:36px}
+  .brand-tag{font-size:20px;line-height:24px;letter-spacing:.08em}
+  .agencies{display:none}
+  .bar.top .clock{display:block;position:static;font-size:28px;line-height:32px;letter-spacing:.03em}
+
+  /* ---------- globe: ~45% of the screen height, 24 design px side margins ---------- */
+  #globe-gl,#globe{left:var(--globe-left,24px);top:var(--globe-canvas-top,50px);
+                   width:var(--globe-w,1032px);height:var(--globe-canvas-h,1000px)}
+  .measure,.corner{display:none}
+
+  /* ---------- hero: country / disease / big number / CFR / attention ---------- */
+  .hero{left:24px;top:var(--hero-top,1020px);width:1032px;height:var(--hero-h,446px)}
+  .kicker{top:0;font-size:24px;line-height:26px}
+  .rank{top:2px;width:400px;font-size:20px;line-height:24px}
+  .country{top:30px;font-size:68px;line-height:76px;max-width:984px}
+  .disease{top:110px;font-size:36px;line-height:42px;max-width:984px}
+  .meta{display:none}
+  .signal-bar{top:160px;width:4px;height:26px}
+  .big-label{left:18px;top:158px;font-size:24px;line-height:26px}
+  .big{top:184px;font-size:118px;line-height:118px}
+  .big.s7{font-size:100px}.big.s9{font-size:82px}.big.sx{font-size:66px}
+  .big .unit{font-size:36px;line-height:36px;margin-left:16px}
+  .hair{width:984px}
+  .hr1{top:308px}.hr2{top:400px}
+  .kv{top:316px;width:440px}
+  .kv.v1{left:0}.kv.v2{left:520px}
+  .kv .k{font-size:22px;line-height:24px}
+  .kv .v{margin-top:3px;font-size:46px;line-height:52px}
+  .att-label{top:410px;font-size:24px;line-height:26px}
+  .meter{left:200px;top:416px;gap:6px}
+  .meter i{width:36px;height:8px}
+  .att-level{left:430px;top:408px;font-size:24px;line-height:26px}
+  .facts,.arc-note{display:none}
+
+  /* ---------- watchlist: 3 rows, the page that holds the focus ---------- */
+  .watch{left:24px;top:var(--watch-top,1520px);width:1032px;height:var(--watch-h,300px)}
+  .watch-kicker{font-size:24px;line-height:26px}
+  .watch-title{top:28px;font-size:36px;line-height:40px}
+  .watch-sort{top:42px;font-size:18px;line-height:22px}
+  .watch-rule{width:1032px}
+  .wr1{top:74px}.wr2{display:none}.wr3{top:292px}.wr4{display:none}
+  .watch-head{top:80px;width:1032px;font-size:22px;line-height:26px}
+  .c-country{left:24px}.c-disease{left:334px}
+  .c-cases{left:640px;width:200px}
+  .c-deaths{left:850px;width:150px}
+  .c-date,.c-level{display:none}
+  #rows{width:1032px;height:292px}
+  .row{width:1032px;height:60px}
+  .row .dot{left:0;top:25px;width:10px;height:10px}
+  .row .name{left:24px;top:11px;width:300px;font-size:34px;line-height:38px}
+  .row .dis{left:334px;top:14px;width:300px;font-size:28px;line-height:32px}
+  .row .cases{left:640px;top:11px;width:200px;font-size:34px;line-height:38px}
+  .row .deaths{left:850px;top:11px;width:150px;font-size:34px;line-height:38px}
+  .row .date,.row .level{display:none}
+  .row .sep{top:0;width:1032px}
+  .row.on::before{top:3px;width:1032px;height:54px}
+  .watch-foot{display:none}
+
+  /* ---------- bottom strip: SOURCE · SYNC · LAG ---------- */
+  .bar.bottom{top:auto;bottom:0;height:calc(var(--bar-h,100px) + var(--safe-bottom,0px));
+              padding-bottom:var(--safe-bottom,0px);border-top:1px solid var(--hair)}
+  .bar.bottom .clock{display:none}
+  .sync{position:static;flex:1;text-align:center;font-size:26px;line-height:30px}
+
+  /* the transmission chain needs the landscape's spare column; at phone width
+     it would have to shrink below legibility, so it is not shown at all */
+  .chain-panel,.chain-kicker,.chain-graph,.chips,.chain-title{display:none}
+}
+
 

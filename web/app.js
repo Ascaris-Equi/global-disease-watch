@@ -234,6 +234,24 @@ let globe = null, chainView = null;
 let lastDraw = -1;
 let lastClock = '';
 
+/* ---------------------------------------------------------------------
+   portrait / mobile mode
+   The landscape stage is the fixed 1920x1080 design. A portrait viewport
+   gets a separate 1080x1920 (9:16) design that is scaled to the viewport
+   width; the two layouts never mix. The test is an aspect test, matching
+   the `orientation: portrait` CSS breakpoint.
+   --------------------------------------------------------------------- */
+function isPortrait() {
+  return window.innerWidth < window.innerHeight;
+}
+const MOBILE_BOOT = isPortrait();     /* phone texture size is fixed at boot */
+const M_W = 1080;                     /* portrait design base, 9:16 */
+const M_HERO_H = 446;                 /* portrait band heights, design px */
+const M_WATCH_H = 300;
+let pageRows = MOBILE_BOOT ? 3 : 6;   /* ranked rows per watchlist page */
+let rowTop = MOBILE_BOOT ? 112 : 82;  /* first row y inside .watch */
+let rowStep = MOBILE_BOOT ? 60 : 46;
+
 /* hero rotation + globe focus easing, matching the WPF screen: one report every
    9 s, a 350 ms opacity fade each way, and a 2.4 s smoothstep turn of the globe. */
 const HERO_ROWS = 6;        // rotation runs over the six rows this page shows
@@ -452,6 +470,29 @@ function buildLinks() {
    6 · DOM: hero + watchlist + chips
    ===================================================================== */
 function setText(sel, v) { const e = $(sel); if (e) e.textContent = v; }
+/* Step a single line down until it stops clipping its box. Only the portrait
+   layout calls this: its type scale is about twice the landscape design's, so
+   a long country name or data source would otherwise be cut with an ellipsis.
+   In landscape the inline size is cleared again, leaving the stylesheet alone. */
+function fitText(el, minPx, boxEl) {
+  if (!el) return;
+  el.style.fontSize = '';
+  if (!isPortrait()) return;
+  let size = parseFloat(getComputedStyle(el).fontSize);
+  if (!isFinite(size)) return;
+  let guard = 0;
+  while (size > minPx && guard++ < 60) {
+    const clipped = el.scrollWidth > el.clientWidth + 1;
+    let outside = false;
+    if (boxEl) {
+      const r = el.getBoundingClientRect(), b = boxEl.getBoundingClientRect();
+      outside = r.right > b.right + 1;
+    }
+    if (!clipped && !outside) break;
+    size -= 2;
+    el.style.fontSize = size + 'px';
+  }
+}
 function applyLanguage() {
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : lang;
   nf = new Intl.NumberFormat(locale);
@@ -464,10 +505,10 @@ function applyLanguage() {
 function buildWatchRows() {
   const box = $('#rows');
   box.innerHTML = '';
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < pageRows; i++) {
     const row = document.createElement('div');
     row.className = 'row';
-    row.style.top = (82 + i * 46) + 'px'; // 624 + 82 = 706
+    row.style.top = (rowTop + i * rowStep) + 'px'; // landscape: 624 + 82 = 706
     if (i > 0) { const sep = document.createElement('div'); sep.className = 'sep'; row.appendChild(sep); }
     row.innerHTML = '<div class="dot"></div><div class="name"></div><div class="dis"></div>' +
       '<div class="cases"></div><div class="deaths"></div><div class="date"></div><div class="level"></div>';
@@ -477,24 +518,30 @@ function buildWatchRows() {
 function updateWatch() {
   const rows = document.querySelectorAll('#rows .row');
   for (let i = 0; i < rows.length; i++) {
-    const row = rows[i], e = RANKED[rankPage * 6 + i];
+    const row = rows[i], e = RANKED[rankPage * pageRows + i];
     if (!e) { row.style.display = 'none'; continue; }
     row.style.display = '';
     const s = attention(e), lv = levelOf(s);
     const dot = row.querySelector('.dot');
     dot.style.background = LV_COLOR[lv];
-    row.querySelector('.name').textContent = countryName(e);
-    row.querySelector('.dis').textContent = diseaseName(e.disease, e.disease_en);
-    const rowCases = metricNum(e, 'cases'), rowDeaths = metricNum(e, 'deaths');
-    row.querySelector('.cases').textContent = rowCases != null ? fmt(rowCases) : (num(e.cdcLevel) ? 'CDC ' + num(e.cdcLevel) : '—');
-    row.querySelector('.deaths').textContent = rowDeaths != null ? fmt(rowDeaths) : '—';
+    const rowName = row.querySelector('.name'), rowDis = row.querySelector('.dis'), rowCases = row.querySelector('.cases');
+    rowName.textContent = countryName(e);
+    rowDis.textContent = diseaseName(e.disease, e.disease_en);
+    const nCases = metricNum(e, 'cases'), nDeaths = metricNum(e, 'deaths');
+    rowCases.textContent = nCases != null ? fmt(nCases) : (num(e.cdcLevel) ? 'CDC ' + num(e.cdcLevel) : '—');
+    row.querySelector('.deaths').textContent = nDeaths != null ? fmt(nDeaths) : '—';
     row.querySelector('.date').textContent = mmdd(e.date);
     const lvEl = row.querySelector('.level');
     lvEl.textContent = t(['low', 'mid', 'high'][lv]);
     lvEl.style.color = LV_COLOR[lv];
     row.classList.toggle('on', !!(HERO && e === HERO));
+    /* portrait type is larger relative to the screen, so a long country or
+       disease name gets its size stepped down instead of being cut off */
+    fitText(rowName, 18);
+    fitText(rowDis, 16);
+    fitText(rowCases, 20);
   }
-    const firstRow = rankPage * 6 + 1, lastRow = Math.min((rankPage + 1) * 6, RANKED.length);
+    const firstRow = rankPage * pageRows + 1, lastRow = Math.min((rankPage + 1) * pageRows, RANKED.length);
     const kick = document.querySelector(".watch-kicker");
     if (kick) kick.textContent = "WATCHLIST\u00A0\u00A0" + pad2(firstRow) + "\u2013" + pad2(lastRow) + " / " + pad2(RANKED.length);
   const countries = new Set(EVENTS.map(function (e) { return e.iso; })).size;
@@ -532,6 +579,10 @@ function updateHero() {
   setText('#factDate', mmdd(HERO.date));
   setText('#factAsOf', mmdd(HERO.date));
   setText('#factSource', sourceName(HERO.source));
+  const heroBox = $('.hero');
+  fitText($('#heroCountry'), 44, heroBox);
+  fitText($('#heroDisease'), 22, heroBox);
+  fitText($('.big'), 56, heroBox);
 }
 /* ---------------------------------------------------------------
    hero rotation · every 9 s the focus moves to the next of the six
@@ -566,10 +617,11 @@ function heroLonOf(e) { const v = e ? num(e.lon) : null; return v == null ? 7 : 
 
 function showHero(entry) {
   HERO = entry || null;
-  /* the table is six rows tall, so it pages to whatever page holds the focus
-     row; otherwise the highlight would point at a row that is not shown. */
+  /* the table is `pageRows` rows tall, so it pages to whatever page holds the
+     focus row; otherwise the highlight would point at a row that is not shown.
+     landscape: 6 rows/page, portrait: 3 rows/page. */
   const heroIdx = HERO ? RANKED.indexOf(HERO) : 0;
-  rankPage = heroIdx >= 0 ? Math.floor(heroIdx / 6) : 0;
+  rankPage = heroIdx >= 0 ? Math.floor(heroIdx / pageRows) : 0;
   /* arcs, chips and the transmission chain all hang off the featured disease */
   LINKS = buildLinks();
   if (globe) {
@@ -610,7 +662,7 @@ function updateClock() {
   const p = function (v) { return String(v).padStart(2, '0'); };
   const s = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' +
     p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
-  if (s !== lastClock) { lastClock = s; setText('#clock', s); }
+  if (s !== lastClock) { lastClock = s; setText('#clock', s); setText('#clockM', s); }
 }
 function updateSyncLine() {
   let sync = '—';
@@ -627,6 +679,7 @@ function updateSyncLine() {
   const el = $('#syncLine');
   el.style.whiteSpace = 'pre';
   el.textContent = line;
+  fitText(el, 14);
 }
 
 /* =====================================================================
@@ -847,14 +900,15 @@ ChainView.prototype.tick = function (time) {
    ambient 92,100,116 + directional 196,202,214 from (-.62,.42,.66).
    The 2d path is kept verbatim as the fallback for a browser without WebGL. */
 const GLOBE_WEBGL = true;              /* master switch: false → canvas-2d globe */
-const TEX_W = 4096, TEX_H = 2048;      /* equirectangular texture, ~32 MB */
+const TEX_K = MOBILE_BOOT ? 0.5 : 1;   /* phone build halves the map */
+const TEX_W = 4096 * TEX_K, TEX_H = 2048 * TEX_K;  /* 2048x1024 on phones */
 const TEX_OCEAN = '#0A0C0D';
-const TEX_GRID = '#2B2419', TEX_GRID_PX = 2.6, TEX_GRID_DEG = 15;
+const TEX_GRID = '#2B2419', TEX_GRID_PX = 2.6 * TEX_K, TEX_GRID_DEG = 15;
 const TEX_LAND = '#1B1F22';
-const TEX_COAST = '#4B5257', TEX_COAST_PX = 3.0;
+const TEX_COAST = '#4B5257', TEX_COAST_PX = 3.0 * TEX_K;
 const TEX_L1_FILL = 'rgba(240,208,112,0.55)', TEX_L1_STROKE = 'rgba(255,232,168,0.95)';
 const TEX_L2_FILL = 'rgba(165,32,32,0.85)', TEX_L2_STROKE = 'rgba(224,58,42,0.95)';
-const TEX_HOT_FILL = 'rgba(172,26,26,0.95)', TEX_HOT_STROKE = '#FF5A45', TEX_HOT_PX = 4.5;
+const TEX_HOT_FILL = 'rgba(172,26,26,0.95)', TEX_HOT_STROKE = '#FF5A45', TEX_HOT_PX = 4.5 * TEX_K;
 /* the wpf light rig, straight from WallGlobe.cs */
 const GL_AMBIENT = [0.3608, 0.3922, 0.4549];   /* AmbientLight 92,100,116 */
 const GL_DIFFUSE = [0.7686, 0.7922, 0.8392];   /* DirectionalLight 196,202,214 */
@@ -928,6 +982,7 @@ function GlobeView(canvas, glCanvas) {
   this.txPaths = new Map(); this.txBBox = new Map(); this.txLand = null; this.hotIso = null;
   this.baseCanvas = null; this.baseCtx = null; this.scratch = null; this.hotBBox = null;
   this.tex = null;
+  this.texW = TEX_W; this.texH = TEX_H;   /* actual equirect texture size */
   this.texStats = { baseMs: 0, upload: 0, hot: 0, rebuilds: 0 };
   if (!this.force2D) this.initGL();
 }
@@ -1132,6 +1187,16 @@ GlobeView.prototype.focusTo = function (lonDeg, time) {
 GlobeView.prototype.snapTo = function (lonDeg) {
   const v = (lonDeg == null || !isFinite(lonDeg)) ? 7 : lonDeg;
   this.baseLon = v; this.lon0 = v; this.fromLon = v; this.toLon = v; this.moveStart = -1;
+};
+/* Portrait layout draws into its own box — a 1032-px-wide strip whose sphere
+   is sized to the band between the bars — so the drawing coordinate system has
+   to follow the layout. Landscape keeps the stock 1000x1080 / (478,540) / 430. */
+GlobeView.prototype.setViewBox = function (W, H, cx, cy, R) {
+  if (!(W > 0 && H > 0 && R > 0)) return;
+  if (this.W === W && this.H === H && this.cx === cx && this.cy === cy && this.R === R) return;
+  this.W = W; this.H = H; this.cx = cx; this.cy = cy; this.R = R;
+  this.q = -1;                 /* force resize() to rebuild the backing store */
+  this.buildGradients();
 };
 GlobeView.prototype.resize = function (q) {
   if (q === this.q && this.cv.width > 0 && (this.gl ? !!this.tex : !!this.gOcean)) return;
@@ -1799,8 +1864,45 @@ GlobeView.prototype.drawOverlay = function (time) {
 /* =====================================================================
    9 · boot
    ===================================================================== */
-function fitStage() {
-  const vw = window.innerWidth, vh = window.innerHeight;
+/* --sat/--sab are env(safe-area-inset-*) in *CSS* px (style.css :root); the
+   stage is scaled, so the notch/home-indicator insets are converted to design
+   px here. https://webkit.org/blog/7929/designing-websites-for-iphone-x/ */
+function readSafeInsets(scale) {
+  const out = { top: 0, bottom: 0 };
+  try {
+    const cs = getComputedStyle(document.documentElement);
+    const t = parseFloat(cs.getPropertyValue('--sat')) || 0;
+    const b = parseFloat(cs.getPropertyValue('--sab')) || 0;
+    out.top = Math.round(t / (scale || 1));
+    out.bottom = Math.round(b / (scale || 1));
+  } catch (e) {}
+  return out;
+}
+/* Keep the watchlist page size in sync with the live orientation (the boot
+   texture size cannot change, but the DOM layout can). */
+function ensureMode() {
+  const p = isPortrait();
+  document.documentElement.classList.toggle('portrait', p);
+  document.body.classList.toggle('portrait', p);
+  const next = p ? 3 : 6;
+  if (next !== pageRows) {
+    pageRows = next;
+    rowTop = p ? 112 : 82;
+    rowStep = p ? 60 : 46;
+    buildWatchRows();
+    /* the old page number was counted in rows of the other size — re-derive it
+       from the focus so the table never points past the end of the list */
+    const hi = HERO ? RANKED.indexOf(HERO) : -1;
+    rankPage = hi >= 0 ? Math.floor(hi / pageRows) : 0;
+    updateWatch();
+    /* drop any portrait-only inline type sizes the fitter left behind */
+    updateHero();
+    updateSyncLine();
+  }
+  if (window.__app) { window.__app.portrait = p; window.__app.pageRows = pageRows; }
+}
+/* landscape: the stock 1920x1080 design, contain-scaled with black matte. */
+function layoutLandscape(vw, vh) {
   const s = Math.min(vw / 1920, vh / 1080);
   /* contain-scale the 1920x1080 design; the leftover margin becomes pure-black
      matte that the letterbox bars absorb (see --padx/--pady in style.css). */
@@ -1812,10 +1914,81 @@ function fitStage() {
        bars' half-pady text offsets stay on whole pixels too */
     const padXR = Math.ceil(padX - 1e-6);
     const padYR = Math.ceil(padY / 2 - 1e-6) * 2;
+    stage.style.width = '';
+    stage.style.height = '';
     stage.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
     stage.style.setProperty('--padx', padXR + 'px');
     stage.style.setProperty('--pady', padYR + 'px');
   }
+  if (globe) globe.setViewBox(1000, 1080, 478, 540, 430);
+  return s;
+}
+/* portrait: a 1080-wide design whose height follows the device (1920 at 9:16).
+   The stage is scaled to the viewport width, so the design height is whatever
+   the device gives us; the extra space on tall phones is shared out as gaps
+   between the four bands. CSS places every band from the variables set here. */
+function layoutPortrait(vw, vh) {
+  const stage = $('#stage');
+  const s = vw / M_W;
+  const stageH = Math.round(vh / s);
+  if (!stage) return s;
+  stage.style.width = M_W + 'px';
+  stage.style.height = stageH + 'px';
+  stage.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  stage.style.setProperty('--padx', '0px');
+  stage.style.setProperty('--pady', '0px');
+
+  const safe = readSafeInsets(s);
+  const barH = Math.max(72, Math.min(140, Math.round(stageH * 0.052)));
+  const gapMin = Math.max(14, Math.min(40, Math.round(stageH * 0.0115)));
+  const usable = stageH - barH * 2 - safe.top - safe.bottom - M_HERO_H - M_WATCH_H - gapMin * 4;
+
+  /* 24 px of air on both sides of the globe band. The sphere is as large as the
+     width allows (the arcs bow out to 1.2R, so the drawing box needs that
+     margin); the band itself stays close around the sphere so any spare height
+     on tall phones lands in the gaps between bands, not around the globe. */
+  const gW = M_W - 48;
+  const maxR = Math.floor(gW / 2 / 1.2);
+  const bandMargin = Math.max(10, Math.min(26, Math.round(stageH * 0.006)));
+  let globeH = Math.min(Math.round(stageH * 0.466), usable);
+  let R = maxR;
+  const bandNeed = 2 * R + 2 * bandMargin;
+  if (globeH >= bandNeed) {
+    globeH = bandNeed;
+  } else {
+    R = Math.max(120, Math.floor((globeH - 2 * bandMargin) / 2));
+    if (R > maxR) R = maxR;
+    globeH = Math.min(usable, 2 * R + 2 * bandMargin);
+  }
+  const canvasH = Math.ceil(R * 2.4);
+
+  const extra = usable - globeH;
+  const gap = gapMin + (extra > 0 ? extra / 4 : 0);
+  const globeTop = barH + safe.top + gap;
+  const heroTop = globeTop + globeH + gap;
+  const watchTop = heroTop + M_HERO_H + gap;
+  const canvasTop = globeTop + Math.round((globeH - canvasH) / 2);
+
+  stage.style.setProperty('--stage-h', stageH + 'px');
+  stage.style.setProperty('--bar-h', barH + 'px');
+  stage.style.setProperty('--safe-top', safe.top + 'px');
+  stage.style.setProperty('--safe-bottom', safe.bottom + 'px');
+  stage.style.setProperty('--globe-left', '24px');
+  stage.style.setProperty('--globe-w', gW + 'px');
+  stage.style.setProperty('--globe-canvas-top', canvasTop + 'px');
+  stage.style.setProperty('--globe-canvas-h', canvasH + 'px');
+  stage.style.setProperty('--hero-top', Math.round(heroTop) + 'px');
+  stage.style.setProperty('--hero-h', M_HERO_H + 'px');
+  stage.style.setProperty('--watch-top', Math.round(watchTop) + 'px');
+  stage.style.setProperty('--watch-h', M_WATCH_H + 'px');
+  if (globe) globe.setViewBox(gW, canvasH, gW / 2, canvasH / 2, R);
+  return s;
+}
+function fitStage() {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  ensureMode();
+  const portrait = isPortrait();
+  const s = portrait ? layoutPortrait(vw, vh) : layoutLandscape(vw, vh);
   if (globe) {
     const dpr = window.devicePixelRatio || 1;
     /* 1.25x supersampling above the composited CSS size; 2.0 caps the cost on
@@ -1839,7 +2012,8 @@ function frame(ts) {
   const t0 = performance.now();
   lastDraw = time;
   if (globe) globe.draw(time);
-  if (chainView) chainView.tick(time);
+  /* the transmission chain is hidden in portrait — no point animating it */
+  if (chainView && !isPortrait()) chainView.tick(time);
   const dur = performance.now() - t0;
   const p = window.__perf;
   p.frames++; p.total += dur; p.last = dur;
@@ -1879,7 +2053,9 @@ async function boot() {
     lang: lang, schema: SNAP ? SNAP.schema : null, events: EVENTS.length,
     countries: new Set(EVENTS.map(function (e) { return e.iso; })).size,
     hero: HERO, ranked: RANKED.length,
-    worldCountries: WORLD.countries.length, lag: LAG, latest: LATEST
+    worldCountries: WORLD.countries.length, lag: LAG, latest: LATEST,
+    portrait: isPortrait(), pageRows: pageRows,
+    tex: { w: TEX_W, h: TEX_H, mobile: MOBILE_BOOT, k: TEX_K }
   };
   if (/[?&]debug\b/.test(location.search)) { window.__globe = globe; window.__chain = chainView; }
   fitStage();

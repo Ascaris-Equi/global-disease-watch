@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0a0c0d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GLOBAL WATCH">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23050607'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%238C1C1C' stroke-width='2'/%3E%3C/svg%3E">
 <title>全球传染病监测 · GLOBAL WATCH</title>
 <link rel="stylesheet" href="style.css">
@@ -72,6 +77,8 @@
   <header class="bar top">
     <div class="brand"><span class="brand-name" data-t="brand"></span><span class="brand-tag" data-t="brandTag"></span></div>
     <div class="agencies" data-t="agencies"></div>
+    <!-- portrait only: the clock moves up into the narrow top strip -->
+    <div class="clock" id="clockM" aria-hidden="true"></div>
   </header>
   <footer class="bar bottom">
     <div class="clock" id="clock"></div>
