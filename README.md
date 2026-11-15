@@ -23,6 +23,8 @@ cd electron; npm i; npm start
 
 数据源接入见 [DATA.md](DATA.md)，限制见 [LIMITED.md](LIMITED.md)。
 
+许可：[PolyForm Noncommercial 1.0.0](LICENSE)。个人、教育、研究、公益与政府用途免费；**商用需事先取得书面授权**，在仓库开 issue 说明用途即可。
+
 ---
 
 The loop above runs 30 s of the live rotation. The globe, the attention ranking and the transmission chain come round once every nine seconds.
@@ -43,3 +45,5 @@ Colours live in `Th.Use()` in `src/WallView.cs`.
 Update cadence lives in `refreshSeconds` in `feeds.json` (default `3600`).
 
 Data sources: [DATA.md](DATA.md). Limitations: [LIMITED.md](LIMITED.md).
+
+Licence: [PolyForm Noncommercial 1.0.0](LICENSE) — free for personal, educational, research, charitable and government use. **Commercial use requires prior written permission**; open an issue describing the intended use.
