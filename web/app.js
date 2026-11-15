@@ -540,15 +540,28 @@ function updateHero() {
    ease at the same moment the new text lands.
    --------------------------------------------------------------- */
 function heroRows() {
-  /* Prefer entries that actually carry figures: the hero panel is unreadable
-     when the big number is a dash, and the map highlight is the point of the
-     loop. Scanning the top 12 keeps the rotation inside the attention head. */
-  const withFigures = RANKED.filter(function (e) {
+  /* Rotation picks entries that carry figures, then reorders greedily so two
+     consecutive slides rarely show the same disease: four cholera slides in a
+     row read like the map is stuck. Ranking order still drives the selection,
+     only the tie-breaking does the spreading. */
+  const pool = RANKED.filter(function (e) {
     return metricNum(e, "deaths") != null || metricNum(e, "cases") != null;
   });
-  if (withFigures.length >= 3) return withFigures.slice(0, HERO_ROWS);
-  return RANKED.slice(0, HERO_ROWS);
+  if (pool.length < 3) return RANKED.slice(0, HERO_ROWS);
+  const rest = pool.slice(), list = [];
+  let lastDisease = null;
+  while (list.length < HERO_ROWS && rest.length) {
+    let idx = 0;
+    for (let i = 0; i < rest.length; i++) {
+      if (rest[i].disease !== lastDisease) { idx = i; break; }
+    }
+    const pick = rest.splice(idx, 1)[0];
+    list.push(pick);
+    lastDisease = pick.disease;
+  }
+  return list;
 }
+
 function heroLonOf(e) { const v = e ? num(e.lon) : null; return v == null ? 7 : v; }
 
 function showHero(entry) {
