@@ -247,8 +247,10 @@ function isPortrait() {
 const MOBILE_BOOT = isPortrait();     /* phone texture size is fixed at boot */
 const M_W = 1080;                     /* portrait design base, 9:16 */
 const M_HERO_H = 446;                 /* portrait band heights, design px */
-const M_WATCH_H = 300;
-let pageRows = MOBILE_BOOT ? 3 : 6;   /* ranked rows per watchlist page */
+const M_WATCH_H = 240;
+const M_GLOBE_H = 600;                /* globe band = sphere diameter in portrait */
+const M_CHAIN_H = 392;                /* transmission chain band */
+let pageRows = MOBILE_BOOT ? 2 : 6;   /* ranked rows per watchlist page */
 let rowTop = MOBILE_BOOT ? 112 : 82;  /* first row y inside .watch */
 let rowStep = MOBILE_BOOT ? 60 : 46;
 
@@ -725,6 +727,58 @@ function routeCurve(a, b, from, to, nodes) {
   return best;
 }
 
+/* ---------------------------------------------------------------------
+   portrait chain geometry (design px, box 1032x392 at the stage's 24 px side
+   margin). The nine hosts + 人 sit on a 2x5 grid; row 0 carries its label
+   above the icon and row 1 below it, which leaves the corridor between the
+   rows free of text. Every red route is drawn orthogonally through that
+   corridor (one lane per step) so it never crosses an icon or a label.
+   --------------------------------------------------------------------- */
+const CHAIN_PORTRAIT = {
+  W: 1032, H: 392,
+  cols: 5,
+  rowY: [130, 256],
+  iconR: 42,        /* 84 px icons, 24 px labels (design px) */
+  humanR: 48,
+  lanes: [186, 202, 194]
+};
+/* rounded polyline → svg path d (8 px corner radius) */
+function roundPolyline(pts, rad) {
+  let d = 'M' + pts[0].x.toFixed(1) + ',' + pts[0].y.toFixed(1);
+  for (let i = 1; i < pts.length - 1; i++) {
+    const p = pts[i], a = pts[i - 1], b = pts[i + 1];
+    const d1 = Math.hypot(p.x - a.x, p.y - a.y) || 1;
+    const d2 = Math.hypot(b.x - p.x, b.y - p.y) || 1;
+    const r = Math.min(rad, d1 / 2, d2 / 2);
+    const q1 = { x: p.x + (a.x - p.x) / d1 * r, y: p.y + (a.y - p.y) / d1 * r };
+    const q2 = { x: p.x + (b.x - p.x) / d2 * r, y: p.y + (b.y - p.y) / d2 * r };
+    d += ' L' + q1.x.toFixed(1) + ',' + q1.y.toFixed(1) +
+      ' Q' + p.x.toFixed(1) + ',' + p.y.toFixed(1) + ' ' + q2.x.toFixed(1) + ',' + q2.y.toFixed(1);
+  }
+  const last = pts[pts.length - 1];
+  d += ' L' + last.x.toFixed(1) + ',' + last.y.toFixed(1);
+  return d;
+}
+function polylineCum(pts) {
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) {
+    cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+  }
+  return cum;
+}
+function polylinePoint(pts, cum, u) {
+  const total = cum[cum.length - 1] || 1;
+  const at = Math.max(0, Math.min(1, u)) * total;
+  for (let i = 1; i < pts.length; i++) {
+    if (at <= cum[i] || i === pts.length - 1) {
+      const seg = (cum[i] - cum[i - 1]) || 1;
+      const k = Math.max(0, Math.min(1, (at - cum[i - 1]) / seg));
+      return { x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * k, y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * k };
+    }
+  }
+  return pts[0];
+}
+
 function ChainView() {
   this.nodes = {};
   this.edges = [];
@@ -734,8 +788,18 @@ function ChainView() {
   this.p2pEl = null;
   this.hot = new Set();
   this.loopHot = false;
+  this.portrait = false;
+  this.built = false;
 }
 ChainView.prototype.build = function () {
+  this.portrait = isPortrait();
+  this.built = true;
+  this.nodes = {};
+  this.edges = [];
+  this.hotDots = [];
+  this.loopEl = null;
+  this.p2pEl = null;
+  if (this.portrait) { this.buildPortrait(); return; }
   const self = this;
   const box = $('#chainNodes');
   box.innerHTML = '';
@@ -818,6 +882,139 @@ ChainView.prototype.build = function () {
     cn.glyphEl = el.querySelector('.glyph');
   }
 };
+/* ---------------------------------------------------------------------
+   portrait chain: chips row · nine hosts + 人 on a 2x5 grid · route
+   The landscape card puts one row of hosts, one row of vectors and the
+   human on a third row. At phone width that is too tall for the band,
+   so the nodes are packed 5+5 (human last) and the edges are routed as
+   rounded right-angle polylines through the corridor between the rows.
+   Non-featured routes stay hidden: with ten nodes on a grid, ten faint
+   curves crossing each other is noise, and the red route is the message.
+   --------------------------------------------------------------------- */
+ChainView.prototype.buildPortrait = function () {
+  this.portrait = true;
+  const box = $('#chainNodes');
+  box.innerHTML = '';
+  const svgEl = $('#chainEdges');
+  while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
+  const W = CHAIN_PORTRAIT.W, H = CHAIN_PORTRAIT.H;
+  svgEl.setAttribute('width', W);
+  svgEl.setAttribute('height', H);
+  svgEl.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+
+  const defs = svg('defs');
+  [['arw', '#343B3E'], ['arw-hot', '#C0392B']].forEach(function (m) {
+    const mk = svg('marker', {
+      id: m[0], viewBox: '0 0 18 18', refX: 15.5, refY: 9,
+      markerWidth: 15, markerHeight: 15, markerUnits: 'userSpaceOnUse', orient: 'auto'
+    });
+    mk.appendChild(svg('path', { d: 'M2,2 L16,9 L2,16 Z', fill: m[1] }));
+    defs.appendChild(mk);
+  });
+  svgEl.appendChild(defs);
+
+  const raw = (TRANS && TRANS.nodes) ? TRANS.nodes : [];
+  const ordered = raw.filter(function (n) { return n.id !== 'human'; })
+    .concat(raw.filter(function (n) { return n.id === 'human'; }));
+  const colW = W / CHAIN_PORTRAIT.cols;
+  for (let i = 0; i < ordered.length && i < CHAIN_PORTRAIT.cols * 2; i++) {
+    const n = ordered[i];
+    const row = i < CHAIN_PORTRAIT.cols ? 0 : 1;
+    const col = i % CHAIN_PORTRAIT.cols;
+    const r = n.id === 'human' ? CHAIN_PORTRAIT.humanR : CHAIN_PORTRAIT.iconR;
+    this.nodes[n.id] = {
+      id: n.id, name: n.name, glyph: n.glyph, row: row,
+      x: colW * (col + 0.5), y: CHAIN_PORTRAIT.rowY[row], r: r
+    };
+  }
+
+  /* same disease/step set as the landscape card, one element per pair */
+  const seen = new Set();
+  this.edges = [];
+  for (const d of (TRANS && TRANS.diseases) ? TRANS.diseases : []) {
+    for (const step of (d.path || [])) {
+      const a = step[0], b = step[1];
+      if (!this.nodes[a] || !this.nodes[b]) continue;
+      const key = a + '>' + b;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const el = svg('path', { d: '', class: 'edge', 'marker-end': 'url(#arw)' });
+      el.style.display = 'none';
+      svgEl.appendChild(el);
+      this.edges.push({ key: key, a: a, b: b, el: el, dot: null, pts: null, cum: null, lane: 0 });
+    }
+  }
+
+  for (const id in this.nodes) {
+    const cn = this.nodes[id];
+    const el = document.createElement('div');
+    el.className = 'node nrow' + cn.row + (cn.id === 'human' ? ' human' : '');
+    el.style.left = (cn.x - cn.r) + 'px';
+    el.style.top = (cn.y - cn.r) + 'px';
+    el.style.width = (2 * cn.r) + 'px';
+    el.style.height = (2 * cn.r) + 'px';
+    el.innerHTML = '<span class="glyph"></span><span class="label"></span>';
+    el.querySelector('.glyph').textContent = cn.glyph;
+    el.querySelector('.label').textContent = hostName(id, cn.name);
+    box.appendChild(el);
+    cn.el = el;
+    cn.labelEl = el.querySelector('.label');
+    cn.glyphEl = el.querySelector('.glyph');
+  }
+};
+/* route one portrait edge: exit the source on its label-free side, run along
+   the inter-row corridor on this edge's lane, enter the target's label-free
+   side. Same column → straight vertical, no lane needed. */
+ChainView.prototype.portraitPath = function (e, laneIdx) {
+  const A = this.nodes[e.a], B = this.nodes[e.b];
+  if (!A || !B) return null;
+  const aY = A.row === 0 ? A.y + A.r + 2 : A.y - A.r - 2;
+  const bY = B.row === 0 ? B.y + B.r + 2 : B.y - B.r - 3;
+  const pts = [];
+  if (Math.abs(A.x - B.x) < 1) {
+    pts.push({ x: A.x, y: aY });
+    pts.push({ x: B.x, y: bY });
+    return pts;
+  }
+  const lane = CHAIN_PORTRAIT.lanes[Math.min(laneIdx, CHAIN_PORTRAIT.lanes.length - 1)];
+  pts.push({ x: A.x, y: aY });
+  pts.push({ x: A.x, y: lane });
+  pts.push({ x: B.x, y: lane });
+  pts.push({ x: B.x, y: bY });
+  return pts;
+};
+/* Keep the ten non-highlighted routes in the DOM but invisible; the featured
+   steps are re-laid so each step gets its own corridor lane. */
+ChainView.prototype.applyPortraitEdges = function (hot) {
+  let lane = 0;
+  for (const e of this.edges) {
+    const on = hot.has(e.key);
+    if (!on) {
+      if (e.el.style.display !== 'none') e.el.style.display = 'none';
+      e.el.className.baseVal = 'edge';
+      if (e.dot) {
+        e.dot.remove(); e.dot = null;
+        this.hotDots = this.hotDots.filter(function (x) { return x !== e; });
+      }
+      continue;
+    }
+    const needLane = Math.abs(this.nodes[e.a].x - this.nodes[e.b].x) >= 1;
+    const pts = this.portraitPath(e, needLane ? lane++ : 0);
+    if (!pts) continue;
+    e.pts = pts;
+    e.cum = polylineCum(pts);
+    e.el.setAttribute('d', roundPolyline(pts, 8));
+    e.el.className.baseVal = 'edge hot';
+    e.el.setAttribute('marker-end', 'url(#arw-hot)');
+    e.el.style.display = '';
+    if (!e.dot) {
+      e.dot = svg('circle', { r: 6, class: 'flow', cx: -20, cy: -20 });
+      e.phase = this.hotDots.length * 0.34;
+      $('#chainEdges').appendChild(e.dot);
+      this.hotDots.push(e);
+    }
+  }
+};
 ChainView.prototype.apply = function () {
   const self = this;
   const route = (TRANS && TRANS.diseases) ? TRANS.diseases.filter(function (d) { return d.name === (HERO ? HERO.disease : ''); })[0] : null;
@@ -828,30 +1025,35 @@ ChainView.prototype.apply = function () {
   this.loopHot = !!(route && String(route.personToPerson) === 'true');
   if (this.loopHot) lit.add('human');
 
-  for (const e of this.edges) {
-    const on = hot.has(e.key);
-    e.el.className.baseVal = 'edge' + (on ? ' hot' : '');
-    e.el.setAttribute('marker-end', on ? 'url(#arw-hot)' : 'url(#arw)');
-    if (on && !e.dot) {
-      e.dot = svg('circle', { r: 3, class: 'flow', cx: -20, cy: -20 });
-      e.phase = this.hotDots.length * 0.34;
-      $('#chainEdges').appendChild(e.dot);
-      this.hotDots.push(e);
-    } else if (!on && e.dot) {
-      e.dot.remove(); e.dot = null;
-      this.hotDots = this.hotDots.filter(function (x) { return x !== e; });
+  if (this.portrait) {
+    this.applyPortraitEdges(hot);
+  } else {
+    for (const e of this.edges) {
+      const on = hot.has(e.key);
+      e.el.className.baseVal = 'edge' + (on ? ' hot' : '');
+      e.el.setAttribute('marker-end', on ? 'url(#arw-hot)' : 'url(#arw)');
+      if (on && !e.dot) {
+        e.dot = svg('circle', { r: 3, class: 'flow', cx: -20, cy: -20 });
+        e.phase = this.hotDots.length * 0.34;
+        $('#chainEdges').appendChild(e.dot);
+        this.hotDots.push(e);
+      } else if (!on && e.dot) {
+        e.dot.remove(); e.dot = null;
+        this.hotDots = this.hotDots.filter(function (x) { return x !== e; });
+      }
     }
-  }
-  if (this.loopEl) this.loopEl.className.baseVal = 'loop' + (this.loopHot ? ' hot' : '');
-  if (this.p2pEl) {
-    this.p2pEl.textContent = t('p2p');
-    this.p2pEl.className.baseVal = 'p2p' + (this.loopHot ? ' hot' : '');
+    if (this.loopEl) this.loopEl.className.baseVal = 'loop' + (this.loopHot ? ' hot' : '');
+    if (this.p2pEl) {
+      this.p2pEl.textContent = t('p2p');
+      this.p2pEl.className.baseVal = 'p2p' + (this.loopHot ? ' hot' : '');
+    }
   }
   for (const id in this.nodes) {
     const n = this.nodes[id];
     if (!n.el) continue;
     const on = lit.has(id);
-    n.el.className = 'node' + (id === 'human' ? ' human' : '') + (on ? ' on' : '');
+    n.el.className = 'node' + (this.portrait ? ' nrow' + n.row : '') +
+      (id === 'human' ? ' human' : '') + (on ? ' on' : '');
     n.labelEl.textContent = hostName(id, n.name);
   }
   // chips
@@ -870,21 +1072,38 @@ ChainView.prototype.apply = function () {
     c.className = 'chip' + (HERO && d === HERO.disease ? ' on' : '');
     c.textContent = diseaseName(d, dEn.get(d));
     chips.appendChild(c);
-    if (chips.scrollWidth > 342) { c.remove(); break; }
+    if (this.portrait) {
+      /* portrait: featured disease + the two neighbours behind it */
+      if (added.size >= 3) break;
+    } else if (chips.scrollWidth > 342) { c.remove(); break; }
   }
   const title = $('#chainTitle');
   title.textContent = HERO ? diseaseName(HERO.disease, HERO.disease_en) : '';
+  const rel = $('#chainRel');
+  if (rel) {
+    rel.textContent = t('p2p');
+    rel.className = 'chain-rel' + (this.loopHot ? ' on' : '');
+  }
 };
 ChainView.prototype.tick = function (time) {
-  const off = -time * 14;
+  const off = -time * (this.portrait ? 30 : 14);
   for (const e of this.hotDots) {
     const u = ((time * 0.32 + (e.phase || 0)) % 1 + 1) % 1;
-    const p = bez(e.pa, e.c, e.pb, u);
+    const p = (this.portrait && e.pts) ? polylinePoint(e.pts, e.cum, u) : bez(e.pa, e.c, e.pb, u);
     e.dot.setAttribute('cx', p.x.toFixed(2));
     e.dot.setAttribute('cy', p.y.toFixed(2));
     e.el.style.strokeDashoffset = off + 'px';
   }
   if (this.loopEl && this.loopHot) this.loopEl.style.strokeDashoffset = off + 'px';
+};
+/* orientation change: the two layouts are different topologies, not restyles */
+ChainView.prototype.setMode = function (portrait) {
+  if (this.built && !!this.portrait === !!portrait) return;
+  this.hotDots = [];
+  this.loopEl = null;
+  this.p2pEl = null;
+  this.build();
+  this.apply();
 };
 
 /* =====================================================================
@@ -1884,7 +2103,7 @@ function ensureMode() {
   const p = isPortrait();
   document.documentElement.classList.toggle('portrait', p);
   document.body.classList.toggle('portrait', p);
-  const next = p ? 3 : 6;
+  const next = p ? 2 : 6;
   if (next !== pageRows) {
     pageRows = next;
     rowTop = p ? 112 : 82;
@@ -1898,6 +2117,8 @@ function ensureMode() {
     /* drop any portrait-only inline type sizes the fitter left behind */
     updateHero();
     updateSyncLine();
+    /* the transmission chain has a different topology in each mode */
+    if (chainView) chainView.setMode(p);
   }
   if (window.__app) { window.__app.portrait = p; window.__app.pageRows = pageRows; }
 }
@@ -1925,8 +2146,11 @@ function layoutLandscape(vw, vh) {
 }
 /* portrait: a 1080-wide design whose height follows the device (1920 at 9:16).
    The stage is scaled to the viewport width, so the design height is whatever
-   the device gives us; the extra space on tall phones is shared out as gaps
-   between the four bands. CSS places every band from the variables set here. */
+   the device gives us; the fixed bands keep the 1080x1920 reference heights
+   (bar 96 / globe 600 / hero 446 / chain 392 / watch 240 / bar 96) and the
+   spare height of taller phones is shared out as equal gaps between the five
+   seams, so the reference screen is filled edge to edge with only hairlines.
+   CSS places every band from the variables set here. */
 function layoutPortrait(vw, vh) {
   const stage = $('#stage');
   const s = vw / M_W;
@@ -1939,34 +2163,29 @@ function layoutPortrait(vw, vh) {
   stage.style.setProperty('--pady', '0px');
 
   const safe = readSafeInsets(s);
-  const barH = Math.max(72, Math.min(140, Math.round(stageH * 0.052)));
-  const gapMin = Math.max(14, Math.min(40, Math.round(stageH * 0.0115)));
-  const usable = stageH - barH * 2 - safe.top - safe.bottom - M_HERO_H - M_WATCH_H - gapMin * 4;
-
-  /* 24 px of air on both sides of the globe band. The sphere is as large as the
-     width allows (the arcs bow out to 1.2R, so the drawing box needs that
-     margin); the band itself stays close around the sphere so any spare height
-     on tall phones lands in the gaps between bands, not around the globe. */
-  const gW = M_W - 48;
-  const maxR = Math.floor(gW / 2 / 1.2);
-  const bandMargin = Math.max(10, Math.min(26, Math.round(stageH * 0.006)));
-  let globeH = Math.min(Math.round(stageH * 0.466), usable);
-  let R = maxR;
-  const bandNeed = 2 * R + 2 * bandMargin;
-  if (globeH >= bandNeed) {
-    globeH = bandNeed;
-  } else {
-    R = Math.max(120, Math.floor((globeH - 2 * bandMargin) / 2));
-    if (R > maxR) R = maxR;
-    globeH = Math.min(usable, 2 * R + 2 * bandMargin);
+  const barH = Math.max(88, Math.min(132, Math.round(stageH * 0.05)));
+  /* the globe band is exactly the sphere diameter; on a very short stage the
+     globe gives up the difference before anything is allowed to overlap */
+  let globeH = M_GLOBE_H;
+  const bands = function (g) {
+    return barH * 2 + safe.top + safe.bottom + g + M_HERO_H + M_CHAIN_H + M_WATCH_H;
+  };
+  let spare = stageH - bands(globeH);
+  if (spare < 20) {
+    globeH = Math.max(360, globeH + spare - 20);
+    spare = stageH - bands(globeH);
   }
-  const canvasH = Math.ceil(R * 2.4);
+  const gapBase = Math.max(2, Math.floor(spare / 5));
+  const gapExtra = Math.max(0, spare - gapBase * 5);
+  const gaps = [0, 1, 2, 3, 4].map(function (i) { return gapBase + (i < gapExtra ? 1 : 0); });
 
-  const extra = usable - globeH;
-  const gap = gapMin + (extra > 0 ? extra / 4 : 0);
-  const globeTop = barH + safe.top + gap;
-  const heroTop = globeTop + globeH + gap;
-  const watchTop = heroTop + M_HERO_H + gap;
+  const gW = M_W - 48;
+  const R = Math.max(120, Math.floor(globeH / 2));
+  const canvasH = Math.ceil(R * 2.4);
+  const globeTop = barH + safe.top + gaps[0];
+  const heroTop = globeTop + globeH + gaps[1];
+  const chainTop = heroTop + M_HERO_H + gaps[2];
+  const watchTop = chainTop + M_CHAIN_H + gaps[3];
   const canvasTop = globeTop + Math.round((globeH - canvasH) / 2);
 
   stage.style.setProperty('--stage-h', stageH + 'px');
@@ -1979,6 +2198,8 @@ function layoutPortrait(vw, vh) {
   stage.style.setProperty('--globe-canvas-h', canvasH + 'px');
   stage.style.setProperty('--hero-top', Math.round(heroTop) + 'px');
   stage.style.setProperty('--hero-h', M_HERO_H + 'px');
+  stage.style.setProperty('--chain-top', Math.round(chainTop) + 'px');
+  stage.style.setProperty('--chain-h', M_CHAIN_H + 'px');
   stage.style.setProperty('--watch-top', Math.round(watchTop) + 'px');
   stage.style.setProperty('--watch-h', M_WATCH_H + 'px');
   if (globe) globe.setViewBox(gW, canvasH, gW / 2, canvasH / 2, R);
@@ -2012,8 +2233,8 @@ function frame(ts) {
   const t0 = performance.now();
   lastDraw = time;
   if (globe) globe.draw(time);
-  /* the transmission chain is hidden in portrait — no point animating it */
-  if (chainView && !isPortrait()) chainView.tick(time);
+  /* flowing dots on the featured route; the portrait chain now animates too */
+  if (chainView) chainView.tick(time);
   const dur = performance.now() - t0;
   const p = window.__perf;
   p.frames++; p.total += dur; p.last = dur;

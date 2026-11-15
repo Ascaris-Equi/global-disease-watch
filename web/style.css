@@ -120,6 +120,8 @@ body.idle{cursor:none}
 .chip{flex:0 0 auto;border:1px solid rgba(121,128,127,.23);background:rgba(121,128,127,.06);border-radius:10px;padding:2px 9px 3px;font-size:11px;line-height:17px;color:rgba(121,128,127,.67);max-width:200px;overflow:hidden;text-overflow:ellipsis}
 .chip.on{color:var(--alert);border-color:rgba(192,57,43,.78);background:rgba(192,57,43,.18)}
 .chain-title{position:absolute;left:1482px;top:574px;font-size:12px;line-height:16px;font-weight:600;color:var(--alert);z-index:3;max-width:374px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* portrait only: the human-to-human note sits on the chain's bottom line */
+.chain-rel{display:none}
 .chain-edges .edge{fill:none;stroke:#343B3E;stroke-width:1.1;stroke-dasharray:4 4;opacity:.75}
 .chain-edges .edge.hot{stroke:var(--alert);stroke-width:2.2;opacity:1}
 .chain-edges .loop{fill:none;stroke:#2E3538;stroke-width:1.1;stroke-dasharray:4 4}
@@ -211,19 +213,19 @@ body.idle{cursor:none}
   .att-level{left:430px;top:408px;font-size:24px;line-height:26px}
   .facts,.arc-note{display:none}
 
-  /* ---------- watchlist: 3 rows, the page that holds the focus ---------- */
-  .watch{left:24px;top:var(--watch-top,1520px);width:1032px;height:var(--watch-h,300px)}
+  /* ---------- watchlist: 2 rows, the page that holds the focus ---------- */
+  .watch{left:24px;top:var(--watch-top,1580px);width:1032px;height:var(--watch-h,240px)}
   .watch-kicker{font-size:24px;line-height:26px}
   .watch-title{top:28px;font-size:36px;line-height:40px}
   .watch-sort{top:42px;font-size:18px;line-height:22px}
   .watch-rule{width:1032px}
-  .wr1{top:74px}.wr2{display:none}.wr3{top:292px}.wr4{display:none}
+  .wr1{top:74px}.wr2{display:none}.wr3{top:236px}.wr4{display:none}
   .watch-head{top:80px;width:1032px;font-size:22px;line-height:26px}
   .c-country{left:24px}.c-disease{left:334px}
   .c-cases{left:640px;width:200px}
   .c-deaths{left:850px;width:150px}
   .c-date,.c-level{display:none}
-  #rows{width:1032px;height:292px}
+  #rows{width:1032px;height:236px}
   .row{width:1032px;height:60px}
   .row .dot{left:0;top:25px;width:10px;height:10px}
   .row .name{left:24px;top:11px;width:300px;font-size:34px;line-height:38px}
@@ -241,9 +243,42 @@ body.idle{cursor:none}
   .bar.bottom .clock{display:none}
   .sync{position:static;flex:1;text-align:center;font-size:26px;line-height:30px}
 
-  /* the transmission chain needs the landscape's spare column; at phone width
-     it would have to shrink below legibility, so it is not shown at all */
-  .chain-panel,.chain-kicker,.chain-graph,.chips,.chain-title{display:none}
+  /* ---------- transmission chain ----------
+     The landscape card is a 422x422 side panel; portrait gets its own band:
+     one row of disease chips, the nine hosts + 人 as a 2x5 icon grid (labels
+     above row 0, below row 1, so the corridor between the rows stays clear
+     for the red route), and a bottom line with the disease + 人传人 note.
+     Geometry lives in app.js (CHAIN_PORTRAIT); this block only styles it. */
+  .chain-panel{left:24px;top:var(--chain-top,1172px);width:1032px;height:var(--chain-h,392px);
+               background:var(--panel);border:1px solid var(--hair);z-index:1}
+  .chain-kicker{left:44px;top:calc(var(--chain-top,1172px) + 14px);font-size:20px;line-height:24px;
+                letter-spacing:.1em;z-index:4}
+  .chips{left:320px;top:calc(var(--chain-top,1172px) + 6px);width:668px;max-width:668px;height:40px;
+         gap:12px;overflow:hidden;z-index:4}
+  .chip{font-size:22px;line-height:28px;padding:4px 16px 5px;border-radius:18px;max-width:200px}
+  .chain-graph{left:24px;top:var(--chain-top,1172px);width:1032px;height:var(--chain-h,392px);z-index:2}
+  .chain-nodes{width:1032px;height:100%}
+  .chain-edges{overflow:visible}
+  .chain-edges .edge{stroke-width:3;stroke-dasharray:10 8}
+  .chain-edges .edge.hot{stroke-width:4}
+
+  .node{width:84px;height:84px;border-width:2px}
+  .node .glyph{font-size:50px}
+  .node .label{top:auto;bottom:-32px;width:206px;height:28px;font-size:24px;line-height:28px;
+               white-space:nowrap;overflow:visible}
+  /* row 0 labels sit above the icons, row 1 labels below: the corridor between
+     the two rows is then free of text and the route can cross it */
+  .node.nrow0 .label{top:auto;bottom:calc(100% + 4px)}
+  .node.nrow1 .label{top:auto;bottom:-32px}
+  .node.human{width:96px;height:96px}
+  .node.human .glyph{font-size:58px}
+  .node.human .label{top:auto;bottom:-26px}
+
+  .chain-title{left:44px;top:calc(var(--chain-top,1172px) + 338px);font-size:30px;line-height:34px;
+               max-width:680px;z-index:4}
+  .chain-rel{display:block;position:absolute;right:44px;top:calc(var(--chain-top,1172px) + 342px);
+             font-size:24px;line-height:30px;color:var(--steel);letter-spacing:.08em;z-index:4}
+  .chain-rel.on{color:var(--alert)}
 }
 
 
