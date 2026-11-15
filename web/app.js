@@ -265,7 +265,7 @@ let heroSwapTimer = null;
 let heroTimer = null;
 
 const $ = function (s) { return document.querySelector(s); };
-const LV_COLOR = ['#79807F', '#C9A227', '#C0392B'];
+const LV_COLOR = ['#79807F', '#D9A44E', '#C0392B'];
 
 function t(k) {
   const d = UI[lang] || UI.en;
@@ -1121,13 +1121,13 @@ ChainView.prototype.setMode = function (portrait) {
 const GLOBE_WEBGL = true;              /* master switch: false → canvas-2d globe */
 const TEX_K = MOBILE_BOOT ? 0.5 : 1;   /* phone build halves the map */
 const TEX_W = 4096 * TEX_K, TEX_H = 2048 * TEX_K;  /* 2048x1024 on phones */
-const TEX_OCEAN = '#0A0C0D';
-const TEX_GRID = '#2B2419', TEX_GRID_PX = 2.6 * TEX_K, TEX_GRID_DEG = 15;
-const TEX_LAND = '#1B1F22';
-const TEX_COAST = '#4B5257', TEX_COAST_PX = 3.0 * TEX_K;
-const TEX_L1_FILL = 'rgba(240,208,112,0.55)', TEX_L1_STROKE = 'rgba(255,232,168,0.95)';
-const TEX_L2_FILL = 'rgba(165,32,32,0.85)', TEX_L2_STROKE = 'rgba(224,58,42,0.95)';
-const TEX_HOT_FILL = 'rgba(172,26,26,0.95)', TEX_HOT_STROKE = '#FF5A45', TEX_HOT_PX = 4.5 * TEX_K;
+const TEX_OCEAN = '#0E1B2A';
+const TEX_GRID = '#213952', TEX_GRID_PX = 2.6 * TEX_K, TEX_GRID_DEG = 15;
+const TEX_LAND = '#273749';
+const TEX_COAST = '#3E5A7D', TEX_COAST_PX = 3.0 * TEX_K;
+const TEX_L1_FILL = 'rgba(217,164,78,0.55)', TEX_L1_STROKE = 'rgba(240,200,130,0.9)';
+const TEX_L2_FILL = 'rgba(190,90,45,0.75)', TEX_L2_STROKE = 'rgba(235,140,90,0.95)';
+const TEX_HOT_FILL = 'rgba(150,40,30,0.95)', TEX_HOT_STROKE = '#E0704F', TEX_HOT_PX = 4.5 * TEX_K;
 /* the wpf light rig, straight from WallGlobe.cs */
 const GL_AMBIENT = [0.3608, 0.3922, 0.4549];   /* AmbientLight 92,100,116 */
 const GL_DIFFUSE = [0.7686, 0.7922, 0.8392];   /* DirectionalLight 196,202,214 */
