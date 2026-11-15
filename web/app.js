@@ -822,9 +822,70 @@ ChainView.prototype.tick = function (time) {
 };
 
 /* =====================================================================
-   8 · the globe (canvas 2D, orthographic, lit)
-   ===================================================================== */
-function GlobeView(canvas) {
+   8 · the globe (webgl texture sphere + canvas-2d overlay)
+   ---------------------------------------------------------------------
+   The WPF screen paints one equirectangular texture and wraps it round a lit
+   orthographic sphere; that is the approach here. The old canvas path
+   projected every country outline by hand and clipped it against the horizon,
+   which turned anything near the rim into a straight-edged wedge; a texture
+   has no clipping to do, the sphere's own geometry decides what is visible.
+   Palette and light rig are the constants the WPF build uses (src/WallGlobe.cs):
+   ocean 13,27,41 · land 36,58,80 · coast 66,96,124 · heat 255,112,82/255,196,178,
+   ambient 92,100,116 + directional 196,202,214 from (-.62,.42,.66).
+   The 2d path is kept verbatim as the fallback for a browser without WebGL. */
+const GLOBE_WEBGL = true;              /* master switch: false → canvas-2d globe */
+const TEX_W = 4096, TEX_H = 2048;      /* equirectangular texture, ~32 MB */
+const TEX_OCEAN = '#0D1B29';
+const TEX_GRID = '#182C40', TEX_GRID_PX = 2.6, TEX_GRID_DEG = 15;
+const TEX_LAND = '#243A50';
+const TEX_COAST = '#42607C', TEX_COAST_PX = 3.0;
+const TEX_HOT_FILL = 'rgba(255,112,82,0.75)', TEX_HOT_STROKE = '#FFC4B2', TEX_HOT_PX = 4;
+/* the wpf light rig, straight from WallGlobe.cs */
+const GL_AMBIENT = [0.3608, 0.3922, 0.4549];   /* AmbientLight 92,100,116 */
+const GL_DIFFUSE = [0.7686, 0.7922, 0.8392];   /* DirectionalLight 196,202,214 */
+const GL_LIGHT = [-0.6211, 0.4208, 0.6612];    /* -(direction .62,-.42,-.66) normalised */
+const GL_RIM = [0.045, 0.060, 0.085];          /* very faint fresnel edge */
+const GL_ROWS = 48, GL_COLS = 96;              /* lat / lon segments on the sphere */
+const GL_VSH = [
+  'attribute vec3 aDir;',
+  'attribute vec2 aUV;',
+  'uniform mat3 uRot;',
+  'uniform vec2 uScale;',
+  'uniform vec2 uOffset;',
+  'varying vec2 vUV;',
+  'varying vec3 vDir;',
+  'void main(){',
+  '  vec3 d = uRot * aDir;',
+  '  vDir = d;',
+  '  vUV = aUV;',
+  '  gl_Position = vec4(uOffset + uScale * d.xy, 0.0, 1.0);',
+  '}'
+].join('\n');
+const GL_FSH = [
+  'precision mediump float;',
+  'uniform sampler2D uTex;',
+  'uniform vec3 uLight;',
+  'uniform vec3 uAmbient;',
+  'uniform vec3 uDiffuse;',
+  'uniform vec3 uRim;',
+  'varying vec2 vUV;',
+  'varying vec3 vDir;',
+  'vec3 lin(vec3 c){ return pow(c, vec3(2.2)); }',
+  'vec3 srgb(vec3 c){ return pow(c, vec3(1.0 / 2.2)); }',
+  'void main(){',
+  '  vec3 n = normalize(vDir);',
+  '  vec3 c = lin(texture2D(uTex, vUV).rgb);',
+  '  float d = max(dot(n, uLight), 0.0);',
+  '  /* wpf lights its 3d materials in linear scRGB; do the same, then encode back */',
+  '  vec3 lit = min(lin(uAmbient) + lin(uDiffuse) * d, vec3(1.0));',
+  '  vec3 col = srgb(min(c * lit, vec3(1.0)));',
+  '  float rim = pow(1.0 - clamp(n.z, 0.0, 1.0), 3.0);',
+  '  col += uRim * rim * (0.30 + 0.70 * d);',
+  '  gl_FragColor = vec4(col, 1.0);',
+  '}'
+].join('\n');
+
+function GlobeView(canvas, glCanvas) {
   this.cv = canvas;
   this.ctx = canvas.getContext('2d', { alpha: true });
   this.ctx.imageSmoothingEnabled = true;
@@ -844,15 +905,135 @@ function GlobeView(canvas) {
   this.levels = new Map();
   this.gOcean = null; this.gLight = null;
   this.reticlePhase = 0;
+  /* webgl sphere + offscreen texture; everything below is inert in 2d mode */
+  this.glCanvas = glCanvas || null;
+  this.gl = null; this.glOff = '';
+  this.force2D = !GLOBE_WEBGL || window.__globeForce2D === true;
+  try { if (/[?&](?:gl|webgl)=(?:0|off|no)\b/i.test(location.search)) this.force2D = true; } catch (e) {}
+  this.txPaths = new Map(); this.txBBox = new Map(); this.txLand = null; this.hotIso = null;
+  this.baseCanvas = null; this.baseCtx = null; this.scratch = null; this.hotBBox = null;
+  this.tex = null;
+  this.texStats = { baseMs: 0, upload: 0, hot: 0, rebuilds: 0 };
+  if (!this.force2D) this.initGL();
 }
+GlobeView.prototype.initGL = function () {
+  const cv = this.glCanvas;
+  if (!cv) { this.glOff = 'no-canvas'; return; }
+  let gl = null;
+  try {
+    const opt = {
+      alpha: true, antialias: true, depth: false, stencil: false,
+      premultipliedAlpha: true, preserveDrawingBuffer: true
+    };
+    gl = cv.getContext('webgl', opt) || cv.getContext('experimental-webgl', opt);
+  } catch (e) { gl = null; }
+  if (!gl) { this.glOff = 'no-webgl'; return; }
+  const self = this;
+  /* a lost context would otherwise leave an empty layer behind the overlay;
+     dropping this.gl sends draw() back down the canvas-2d path */
+  cv.addEventListener('webglcontextlost', function (e) {
+    e.preventDefault();
+    self.glOff = 'context-lost';
+    self.gl = null;
+    self.tex = null;
+  }, false);
+  try {
+    const vs = this.compileGL(gl, gl.VERTEX_SHADER, GL_VSH);
+    const fs = this.compileGL(gl, gl.FRAGMENT_SHADER, GL_FSH);
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog) || 'link');
+    this.prog = prog;
+    this.aDir = gl.getAttribLocation(prog, 'aDir');
+    this.aUV = gl.getAttribLocation(prog, 'aUV');
+    this.uRot = gl.getUniformLocation(prog, 'uRot');
+    this.uScale = gl.getUniformLocation(prog, 'uScale');
+    this.uOffset = gl.getUniformLocation(prog, 'uOffset');
+    this.uTex = gl.getUniformLocation(prog, 'uTex');
+    this.uLight = gl.getUniformLocation(prog, 'uLight');
+    this.uAmbient = gl.getUniformLocation(prog, 'uAmbient');
+    this.uDiffuse = gl.getUniformLocation(prog, 'uDiffuse');
+    this.uRim = gl.getUniformLocation(prog, 'uRim');
+    this.buildSphere(gl, GL_ROWS, GL_COLS);
+    this.gl = gl;
+  } catch (e) {
+    this.glOff = 'init: ' + (e && e.message ? e.message : e);
+    this.gl = null;
+  }
+};
+GlobeView.prototype.compileGL = function (gl, type, src) {
+  const sh = gl.createShader(type);
+  gl.shaderSource(sh, src);
+  gl.compileShader(sh);
+  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+    throw new Error(gl.getShaderInfoLog(sh) || 'shader compile');
+  }
+  return sh;
+};
+/* One unit sphere. Direction (normal) and position are the same vector, so the
+   vertex shader only needs the direction; uv runs lon -180..180 / lat 90..-90. */
+GlobeView.prototype.buildSphere = function (gl, rows, cols) {
+  const nv = (rows + 1) * (cols + 1);
+  const dir = new Float32Array(nv * 3), uv = new Float32Array(nv * 2);
+  const idx = new Uint16Array(rows * cols * 6);
+  let p = 0, u = 0;
+  for (let i = 0; i <= rows; i++) {
+    const lat = (90 - 180 * i / rows) * Math.PI / 180;
+    const cl = Math.cos(lat), sl = Math.sin(lat);
+    for (let j = 0; j <= cols; j++) {
+      const lon = (-180 + 360 * j / cols) * Math.PI / 180;
+      dir[p++] = cl * Math.sin(lon); dir[p++] = sl; dir[p++] = cl * Math.cos(lon);
+      uv[u++] = j / cols; uv[u++] = i / rows;
+    }
+  }
+  let k = 0;
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      const a = i * (cols + 1) + j, b = a + cols + 1;
+      idx[k++] = a; idx[k++] = b; idx[k++] = a + 1;
+      idx[k++] = a + 1; idx[k++] = b; idx[k++] = b + 1;
+    }
+  }
+  this.bufDir = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.bufDir);
+  gl.bufferData(gl.ARRAY_BUFFER, dir, gl.STATIC_DRAW);
+  this.bufUV = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.bufUV);
+  gl.bufferData(gl.ARRAY_BUFFER, uv, gl.STATIC_DRAW);
+  this.bufIdx = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.bufIdx);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
+  this.idxCount = idx.length;
+  this.rot = new Float32Array(9);
+};
 GlobeView.prototype.setWorld = function (world) {
   this.countries = [];
   this.maxN = 0;
+  this.txPaths = new Map();
+  const txAll = new Path2D();
   for (const c of (world && world.countries ? world.countries : [])) {
     const rings = [];
+    const txPath = new Path2D();
+    let txUsed = false;
+    let txMinX = TEX_W, txMinY = TEX_H, txMaxX = 0, txMaxY = 0;
     for (const ring of (c.rings || [])) {
       const n = ring.length;
       if (n < 3) continue;
+      /* equirectangular copy of the same ring for the texture: lon→x, lat→y,
+         nothing clipped and nothing cut. The world rings already arrive split
+         at ±180 (Antarctica's pole ring runs along the bottom edge, which is
+         exactly right), so the shape that used to fold into a wedge simply
+         paints correctly here. */
+      for (let ti = 0; ti < n; ti++) {
+        const tx = (ring[ti][0] + 180) / 360 * TEX_W, ty = (90 - ring[ti][1]) / 180 * TEX_H;
+        if (ti === 0) txPath.moveTo(tx, ty); else txPath.lineTo(tx, ty);
+        if (tx < txMinX) txMinX = tx;
+        if (tx > txMaxX) txMaxX = tx;
+        if (ty < txMinY) txMinY = ty;
+        if (ty > txMaxY) txMaxY = ty;
+      }
+      txPath.closePath();
+      txUsed = true;
       /* Antimeridian: a ring that jumps 180 degrees would otherwise fill the
          sphere as a wedge. Cut it at +-180, inserting the crossing latitude on
          both edges so each half closes along the meridian. */
@@ -866,9 +1047,12 @@ GlobeView.prototype.setWorld = function (world) {
             const edge = lon1 > lon0 ? -180 : 180;
             const t = (edge - lon0) / (lon1 - lon0 + (lon1 > lon0 ? 360 : -360));
             const latC = lat0 + (lat1 - lat0) * t;
-            cur.push([edge, latC]);
+            /* overlap the halves by a hair so the +-180 seam does not read as a
+               one-pixel dark line while the globe turns */
+            const edgeOut = edge > 0 ? 180.05 : -180.05;
+            cur.push([edgeOut, latC]);
             segs.push(cur);
-            cur = [[-edge, latC]];
+            cur = [[-edgeOut, latC]];
           }
         }
         cur.push([lon1, lat1]);
@@ -888,13 +1072,35 @@ GlobeView.prototype.setWorld = function (world) {
       }
     }
     if (rings.length) this.countries.push({ iso: c.iso, rings: rings });
+    if (txUsed) {
+      this.txPaths.set(c.iso, txPath);
+      this.txBBox.set(c.iso, [txMinX, txMinY, txMaxX, txMaxY]);
+      txAll.addPath(txPath);
+    }
   }
+  this.txLand = txAll;
   this.X = new Float32Array(this.maxN);
   this.Y = new Float32Array(this.maxN);
   this.Z = new Float32Array(this.maxN);
+  /* static half of the texture, painted once; the featured country is patched
+     in later by applyHotTexture() */
+  if (this.gl) {
+    const base = document.createElement('canvas');
+    base.width = TEX_W; base.height = TEX_H;
+    this.baseCanvas = base;
+    this.baseCtx = base.getContext('2d', { alpha: false });
+    this.buildBaseTexture();
+  }
 };
 GlobeView.prototype.setData = function (markers, links, levels, hero) {
   this.markers = markers; this.links = links; this.levels = levels; this.hero = hero;
+  /* the texture carries one highlighted country; patch it only when the focus
+     changes (once per carousel step, ~9 s — not per frame) */
+  const iso = (hero && hero.iso) ? hero.iso : null;
+  if (this.gl && iso !== this.hotIso) {
+    this.hotIso = iso;
+    this.applyHotTexture();
+  }
 };
 /* Ease the view towards a longitude (degrees east). Starts where the sphere is
    right now, folds the delta into +/-180 so the turn is always the short way. */
@@ -912,10 +1118,15 @@ GlobeView.prototype.snapTo = function (lonDeg) {
   this.baseLon = v; this.lon0 = v; this.fromLon = v; this.toLon = v; this.moveStart = -1;
 };
 GlobeView.prototype.resize = function (q) {
-  if (q === this.q && this.cv.width > 0 && this.gOcean) return;
+  if (q === this.q && this.cv.width > 0 && (this.gl ? !!this.tex : !!this.gOcean)) return;
   this.q = q;
   this.cv.width = Math.round(this.W * q);
   this.cv.height = Math.round(this.H * q);
+  if (this.glCanvas) {
+    this.glCanvas.width = this.cv.width;
+    this.glCanvas.height = this.cv.height;
+  }
+  if (this.gl) this.gl.viewport(0, 0, this.cv.width, this.cv.height);
   /* resizing the backing store resets the context state */
   this.ctx.imageSmoothingEnabled = true;
   this.ctx.imageSmoothingQuality = 'high';
@@ -943,12 +1154,10 @@ GlobeView.prototype.project = function (vx, vy, vz, c0, s0, ct, st) {
   const z2 = vy * st + zr * ct;
   return { x: this.cx + this.R * x, y: this.cy - this.R * y2, z: z2 };
 };
-GlobeView.prototype.draw = function (time) {
-  const ctx = this.ctx;
-  const q = this.q;
-  ctx.setTransform(q, 0, 0, q, 0, 0);
-  ctx.clearRect(0, 0, this.W, this.H);
-
+/* View angle for this frame: eased focus plus a small residual drift so the
+   sphere never freezes. Shared by both renderers so the 2d overlay always
+   matches the sphere underneath. */
+GlobeView.prototype.tickView = function (time) {
   /* longitude = eased focus + a small residual drift so the sphere never freezes */
   if (this.moveStart >= 0) {
     const u = (time - this.moveStart) / GLOBE_EASE_S;
@@ -963,6 +1172,35 @@ GlobeView.prototype.draw = function (time) {
   this.lon0 = this.baseLon + 2 * Math.sin(time * Math.PI * 2 / 210);
   this.tilt = 20 + 1.0 * Math.sin(time * Math.PI * 2 / 210);
   this.reticlePhase = (Math.sin(time * 2.1) + 1) / 2;
+  /* test hook (only reachable through window.__globe with ?debug): freeze the
+     view so the acceptance shots can be taken at exact yaw angles. */
+  if (this.frozen) { this.lon0 = this.frozenLon; this.tilt = this.frozenTilt; }
+};
+/* Freeze the view at a yaw/pitch (degrees). Passing null resumes the drift. */
+GlobeView.prototype.freezeAt = function (lonDeg, tiltDeg) {
+  if (lonDeg == null || !isFinite(lonDeg)) { this.frozen = false; return; }
+  this.frozen = true;
+  this.frozenLon = lonDeg;
+  this.frozenTilt = (tiltDeg == null || !isFinite(tiltDeg)) ? this.tilt : tiltDeg;
+};
+GlobeView.prototype.draw = function (time) {
+  this.tickView(time);
+  const ctx = this.ctx;
+  ctx.setTransform(this.q, 0, 0, this.q, 0, 0);
+  ctx.clearRect(0, 0, this.W, this.H);
+  if (this.gl && this.tex) {
+    this.drawSphereGL();
+    this.drawOverlay(time);
+  } else {
+    this.draw2D(time);
+  }
+};
+/* ---- canvas-2d fallback: the original per-country orthographic projection ---- */
+GlobeView.prototype.draw2D = function (time) {
+  const ctx = this.ctx;
+  const q = this.q;
+  ctx.setTransform(q, 0, 0, q, 0, 0);
+  ctx.clearRect(0, 0, this.W, this.H);
 
   const lon0 = this.lon0 * Math.PI / 180, tilt = this.tilt * Math.PI / 180;
   const c0 = Math.cos(lon0), s0 = Math.sin(lon0), ct = Math.cos(tilt), st = Math.sin(tilt);
@@ -1225,6 +1463,294 @@ GlobeView.prototype.draw = function (time) {
   }
 };
 
+/* ---- webgl texture sphere ---- */
+/* The static half of the map (ocean, graticule, land, coastlines) is painted
+   once into an offscreen canvas; when the carousel moves the focus, only the
+   union of the old and the new country's texture box is repainted and pushed
+   with texSubImage2D. A full 4096x2048 repaint every nine seconds would be a
+   visible hitch — one rectangle is a couple of milliseconds. */
+GlobeView.prototype.buildBaseTexture = function () {
+  if (!this.baseCtx || !this.txLand) return;
+  const t0 = performance.now();
+  const ctx = this.baseCtx;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = TEX_OCEAN;
+  ctx.fillRect(0, 0, TEX_W, TEX_H);
+  /* graticule every 15°; the ±180 meridian lands on both texture edges so the
+     wrap reads as one continuous line */
+  ctx.strokeStyle = TEX_GRID;
+  ctx.lineWidth = TEX_GRID_PX;
+  ctx.beginPath();
+  for (let lon = -180; lon <= 180; lon += TEX_GRID_DEG) {
+    const x = (lon + 180) / 360 * TEX_W;
+    ctx.moveTo(x, 0); ctx.lineTo(x, TEX_H);
+  }
+  for (let lat = -75; lat <= 75; lat += TEX_GRID_DEG) {
+    const y = (90 - lat) / 180 * TEX_H;
+    ctx.moveTo(0, y); ctx.lineTo(TEX_W, y);
+  }
+  ctx.stroke();
+  /* land + coastline */
+  ctx.fillStyle = TEX_LAND;
+  ctx.fill(this.txLand);
+  ctx.strokeStyle = TEX_COAST;
+  ctx.lineWidth = TEX_COAST_PX;
+  ctx.stroke(this.txLand);
+  this.texStats.baseMs = +(performance.now() - t0).toFixed(1);
+};
+/* Bake the featured country into the texture: fill 255,112,82 at 0.75 over the
+   land with a 255,196,178 edge, the wall's heat colours. The light multiplies
+   it down to the maroon-ish tone the WPF screen shows. */
+GlobeView.prototype.applyHotTexture = function () {
+  if (this.glOff) this.glOff = '';
+  if (!this.gl || !this.baseCanvas) return;
+  const t0 = performance.now();
+  try {
+    const gl = this.gl;
+    if (!this.tex) {
+      this.tex = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, this.tex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.baseCanvas);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      this.texStats.upload = +(performance.now() - t0).toFixed(1);
+    }
+    const newBox = this.hotIso ? this.txBBox.get(this.hotIso) : null;
+    const oldBox = this.hotBBox;
+    if (newBox || oldBox) {
+      const pad = 8;
+      let x0 = TEX_W, y0 = TEX_H, x1 = 0, y1 = 0;
+      for (const b of [oldBox, newBox]) {
+        if (!b) continue;
+        if (b[0] < x0) x0 = b[0];
+        if (b[1] < y0) y0 = b[1];
+        if (b[2] > x1) x1 = b[2];
+        if (b[3] > y1) y1 = b[3];
+      }
+      x0 = Math.max(0, Math.floor(x0 - pad)); y0 = Math.max(0, Math.floor(y0 - pad));
+      x1 = Math.min(TEX_W, Math.ceil(x1 + pad)); y1 = Math.min(TEX_H, Math.ceil(y1 + pad));
+      const w = x1 - x0, h = y1 - y0;
+      if (w > 0 && h > 0) {
+        const sc = this.scratch || (this.scratch = document.createElement('canvas'));
+        sc.width = w; sc.height = h;
+        const sctx = sc.getContext('2d', { alpha: false });
+        sctx.setTransform(1, 0, 0, 1, 0, 0);
+        sctx.drawImage(this.baseCanvas, x0, y0, w, h, 0, 0, w, h);
+        const hot = this.hotIso ? this.txPaths.get(this.hotIso) : null;
+        if (hot) {
+          sctx.save();
+          sctx.translate(-x0, -y0);
+          sctx.fillStyle = TEX_HOT_FILL;
+          sctx.fill(hot);
+          sctx.strokeStyle = TEX_HOT_STROKE;
+          sctx.lineWidth = TEX_HOT_PX;
+          sctx.stroke(hot);
+          sctx.restore();
+        }
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.tex);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, x0, y0, gl.RGBA, gl.UNSIGNED_BYTE, sc);
+        this.hotBBox = newBox;
+      }
+    }
+    /* the texture is ~1.9x wider than its on-screen equator; without mips the
+       coastlines would crawl and alias while the globe turns */
+    gl.generateMipmap(gl.TEXTURE_2D);
+    this.texStats.hot = +(performance.now() - t0).toFixed(1);
+    this.texStats.rebuilds++;
+  } catch (e) {
+    /* out of memory / driver refusal: drop back to the 2d projection */
+    this.glOff = 'texture: ' + (e && e.message ? e.message : e);
+    try { this.gl.clearColor(0, 0, 0, 0); this.gl.clear(this.gl.COLOR_BUFFER_BIT); } catch (e2) {}
+    this.gl = null;
+  }
+};
+GlobeView.prototype.drawSphereGL = function () {
+  const gl = this.gl, cv = this.glCanvas;
+  if (!gl || !this.tex || !cv) return;
+  if (cv.width !== this.cv.width || cv.height !== this.cv.height) {
+    cv.width = this.cv.width; cv.height = this.cv.height;
+  }
+  gl.viewport(0, 0, cv.width, cv.height);
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.disable(gl.DEPTH_TEST);
+  gl.disable(gl.BLEND);
+  gl.enable(gl.CULL_FACE);
+  gl.cullFace(gl.BACK);
+  gl.frontFace(gl.CCW);
+  gl.useProgram(this.prog);
+  const lon = this.lon0 * Math.PI / 180, tilt = this.tilt * Math.PI / 180;
+  const c0 = Math.cos(lon), s0 = Math.sin(lon), ct = Math.cos(tilt), st = Math.sin(tilt);
+  /* the same yaw-then-pitch rotation the 2d projection uses, as a column-major
+     mat3: rot * v gives camera space (x right, y up, z towards the viewer) */
+  const rot = this.rot;
+  rot[0] = c0; rot[1] = -st * s0; rot[2] = ct * s0;
+  rot[3] = 0; rot[4] = ct; rot[5] = st;
+  rot[6] = -s0; rot[7] = -st * c0; rot[8] = ct * c0;
+  gl.uniformMatrix3fv(this.uRot, false, rot);
+  gl.uniform2f(this.uScale, 2 * this.R / this.W, 2 * this.R / this.H);
+  gl.uniform2f(this.uOffset, 2 * this.cx / this.W - 1, 1 - 2 * this.cy / this.H);
+  gl.uniform3f(this.uAmbient, GL_AMBIENT[0], GL_AMBIENT[1], GL_AMBIENT[2]);
+  gl.uniform3f(this.uDiffuse, GL_DIFFUSE[0], GL_DIFFUSE[1], GL_DIFFUSE[2]);
+  gl.uniform3f(this.uLight, GL_LIGHT[0], GL_LIGHT[1], GL_LIGHT[2]);
+  gl.uniform3f(this.uRim, GL_RIM[0], GL_RIM[1], GL_RIM[2]);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, this.tex);
+  gl.uniform1i(this.uTex, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.bufDir);
+  gl.enableVertexAttribArray(this.aDir);
+  gl.vertexAttribPointer(this.aDir, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.bufUV);
+  gl.enableVertexAttribArray(this.aUV);
+  gl.vertexAttribPointer(this.aUV, 2, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.bufIdx);
+  gl.drawElements(gl.TRIANGLES, this.idxCount, gl.UNSIGNED_SHORT, 0);
+};
+/* Everything that is not part of the sphere texture: rim + ticks, great-circle
+   arcs, markers, the hero halo/reticle and the travelling dots. Projected with
+   the same yaw/pitch as the webgl sphere, so it registers to the pixel. */
+GlobeView.prototype.drawOverlay = function (time) {
+  const ctx = this.ctx;
+  const lon0 = this.lon0 * Math.PI / 180, tilt = this.tilt * Math.PI / 180;
+  const c0 = Math.cos(lon0), s0 = Math.sin(lon0), ct = Math.cos(tilt), st = Math.sin(tilt);
+  const cx = this.cx, cy = this.cy, R = this.R;
+
+  // rim + ticks
+  ctx.beginPath();
+  ctx.arc(cx, cy, R - 0.5, 0, Math.PI * 2);
+  ctx.strokeStyle = '#23272A';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.beginPath();
+  for (let k = 0; k < 4; k++) {
+    const a = k * Math.PI / 2;
+    ctx.moveTo(cx + Math.cos(a) * (R + 3), cy + Math.sin(a) * (R + 3));
+    ctx.lineTo(cx + Math.cos(a) * (R + 11), cy + Math.sin(a) * (R + 11));
+  }
+  ctx.strokeStyle = '#2E3538';
+  ctx.stroke();
+
+  // ---- arcs ----
+  for (const l of this.links) {
+    const a = l.a, b = l.b;
+    const la1 = a.lat * Math.PI / 180, lo1 = a.lon * Math.PI / 180;
+    const la2 = b.lat * Math.PI / 180, lo2 = b.lon * Math.PI / 180;
+    const ax = Math.cos(la1) * Math.sin(lo1), ay = Math.sin(la1), az = Math.cos(la1) * Math.cos(lo1);
+    const bx = Math.cos(la2) * Math.sin(lo2), by = Math.sin(la2), bz = Math.cos(la2) * Math.cos(lo2);
+    let dot = Math.max(-1, Math.min(1, ax * bx + ay * by + az * bz));
+    const ang = Math.acos(dot);
+    const sinA = Math.sin(ang);
+    ctx.beginPath();
+    let started = false;
+    const N = 44;
+    for (let i = 0; i <= N; i++) {
+      const u = i / N;
+      let vx, vy, vz;
+      if (sinA < 1e-4) {
+        vx = ax + (bx - ax) * u; vy = ay + (by - ay) * u; vz = az + (bz - az) * u;
+      } else {
+        const w1 = Math.sin((1 - u) * ang) / sinA, w2 = Math.sin(u * ang) / sinA;
+        vx = ax * w1 + bx * w2; vy = ay * w1 + by * w2; vz = az * w1 + bz * w2;
+      }
+      const lift = 1 + 0.035 + 0.15 * Math.sin(Math.PI * u);
+      const p = this.project(vx * lift, vy * lift, vz * lift, c0, s0, ct, st);
+      if (p.z > 0) {
+        if (!started) { ctx.moveTo(p.x, p.y); started = true; } else ctx.lineTo(p.x, p.y);
+      } else started = false;
+    }
+    ctx.strokeStyle = l.hero ? 'rgba(140,28,28,0.62)' : 'rgba(58,66,69,0.95)';
+    ctx.lineWidth = l.hero ? 1.2 : 1;
+    ctx.stroke();
+  }
+
+  // ---- markers ----
+  for (const m of this.markers) {
+    const la = m.lat * Math.PI / 180, lo = m.lon * Math.PI / 180;
+    const p = this.project(Math.cos(la) * Math.sin(lo), Math.sin(la), Math.cos(la) * Math.cos(lo), c0, s0, ct, st);
+    if (p.z <= 0.01) continue;
+    const color = LV_COLOR[m.lvl];
+    const r = 6 + 6.5 * m.size;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.strokeStyle = color; ctx.globalAlpha = 0.7; ctx.lineWidth = 1; ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 2.1, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+    m._x = p.x; m._y = p.y; m._z = p.z;
+  }
+
+  // ---- hero halo and reticle ----
+  if (this.hero) {
+    const h = EVENTS.indexOf(this.hero) >= 0 ? this.hero : null;
+    if (h) {
+      const la = h.lat * Math.PI / 180, lo = h.lon * Math.PI / 180;
+      const p = this.project(Math.cos(la) * Math.sin(lo), Math.sin(la), Math.cos(la) * Math.cos(lo), c0, s0, ct, st);
+      if (p.z > 0) {
+        const halo = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 46);
+        halo.addColorStop(0, 'rgba(140,28,28,0.20)');
+        halo.addColorStop(1, 'rgba(140,28,28,0)');
+        ctx.fillStyle = halo;
+        ctx.fillRect(p.x - 46, p.y - 46, 92, 92);
+        const pulse = 0.55 + 0.45 * this.reticlePhase;
+        ctx.strokeStyle = 'rgba(140,28,28,' + pulse.toFixed(3) + ')';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        for (let k = 0; k < 4; k++) {
+          const a = k * Math.PI / 2;
+          ctx.moveTo(p.x + Math.cos(a) * 11, p.y + Math.sin(a) * 11);
+          ctx.lineTo(p.x + Math.cos(a) * 16, p.y + Math.sin(a) * 16);
+        }
+        ctx.stroke();
+        this.heroScreen = p;
+      } else this.heroScreen = null;
+    }
+  }
+
+  // flowing dots on the featured disease's arcs
+  for (let k = 0; k < this.links.length; k++) {
+    const l = this.links[k];
+    if (!l.hero) continue;
+    const a = l.a, b = l.b;
+    const la1 = a.lat * Math.PI / 180, lo1 = a.lon * Math.PI / 180;
+    const la2 = b.lat * Math.PI / 180, lo2 = b.lon * Math.PI / 180;
+    const ax = Math.cos(la1) * Math.sin(lo1), ay = Math.sin(la1), az = Math.cos(la1) * Math.cos(lo1);
+    const bx = Math.cos(la2) * Math.sin(lo2), by = Math.sin(la2), bz = Math.cos(la2) * Math.cos(lo2);
+    const dot = Math.max(-1, Math.min(1, ax * bx + ay * by + az * bz));
+    const ang = Math.acos(dot), sinA = Math.sin(ang);
+    const u = ((time * 0.16 + k * 0.31) % 1 + 1) % 1;
+    let vx, vy, vz;
+    if (sinA < 1e-4) { vx = ax + (bx - ax) * u; vy = ay + (by - ay) * u; vz = az + (bz - az) * u; }
+    else {
+      const w1 = Math.sin((1 - u) * ang) / sinA, w2 = Math.sin(u * ang) / sinA;
+      vx = ax * w1 + bx * w2; vy = ay * w1 + by * w2; vz = az * w1 + bz * w2;
+    }
+    const lift = 1 + 0.035 + 0.15 * Math.sin(Math.PI * u);
+    const p = this.project(vx * lift, vy * lift, vz * lift, c0, s0, ct, st);
+    if (p.z > 0) {
+      ctx.save();
+      ctx.shadowColor = 'rgba(192,57,43,0.9)';
+      ctx.shadowBlur = 7;
+      ctx.fillStyle = '#C0392B';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+};
+
 /* =====================================================================
    9 · boot
    ===================================================================== */
@@ -1289,7 +1815,7 @@ async function boot() {
   updateWatch();
   updateHero();
 
-  globe = new GlobeView($('#globe'));
+  globe = new GlobeView($('#globe'), $('#globe-gl'));
   globe.setWorld(WORLD);
   globe.resize(1);
   globe.setData(MARKERS, LINKS, LEVEL_BY_ISO, HERO);

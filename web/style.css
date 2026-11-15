@@ -18,7 +18,10 @@ body.idle{cursor:none}
 @keyframes fadein{from{opacity:0}to{opacity:1}}
 
 /* ---------- globe ---------- */
-#globe{position:absolute;left:0;top:0;width:1000px;height:1080px;display:block;will-change:transform}
+/* two stacked layers: the webgl sphere underneath, the 2d overlay (arcs,
+   markers, reticle, rim) on top; both are the same 1000x1080 design box */
+#globe-gl,#globe{position:absolute;left:0;top:0;width:1000px;height:1080px;display:block}
+#globe{will-change:transform}
 .measure{position:absolute;left:908px;top:127px;width:88px;height:1px;background:var(--hair2)}
 .measure::before,.measure::after{content:"";position:absolute;top:-4px;width:1px;height:9px;background:var(--hair2)}
 .measure::before{left:0}.measure::after{left:87px}
