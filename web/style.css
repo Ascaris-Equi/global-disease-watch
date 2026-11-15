@@ -52,6 +52,19 @@ body.idle{cursor:none}
 .facts dd{margin:0;height:22px;line-height:22px;font-size:11px;color:var(--steel);text-align:right;font-variant-numeric:tabular-nums}
 .arc-note{position:absolute;left:0;top:538px;font-size:10px;line-height:1.2;color:#3A4141;white-space:nowrap}
 
+/* hero rotation: the data fields fade out/in while the chrome stays put.
+   350 ms each way; the text is swapped while the fields are fully transparent. */
+.hero .rank,.hero .country,.hero .disease,.hero .meta,
+.hero .big-label,.hero .big,
+.hero .kv .v,.hero .meter,.hero .att-level,.hero .facts dd{
+  transition:opacity 350ms ease;
+}
+.hero.is-out .rank,.hero.is-out .country,.hero.is-out .disease,.hero.is-out .meta,
+.hero.is-out .big-label,.hero.is-out .big,
+.hero.is-out .kv .v,.hero.is-out .meter,.hero.is-out .att-level,.hero.is-out .facts dd{
+  opacity:0;
+}
+
 /* ---------- watchlist ---------- */
 .watch{position:absolute;left:1000px;top:624px;width:880px;height:390px}
 .watch-kicker{position:absolute;left:0;top:0;font-family:var(--mono);font-size:10px;line-height:1;color:var(--steel);letter-spacing:.12em}
@@ -77,6 +90,10 @@ body.idle{cursor:none}
 .row .level{position:absolute;left:810px;top:1px;width:70px;text-align:right;font-size:12px;line-height:18px;color:var(--steel)}
 .row .sep{position:absolute;left:0;top:-9px;width:880px;height:1px;background:var(--grid)}
 .watch-foot{position:absolute;left:0;top:360px;font-family:var(--mono);font-size:10px;line-height:1;color:var(--steel);letter-spacing:.06em;white-space:nowrap}
+
+/* the ranked row that matches the rotating hero — WPF paints the same soft band */
+.row.on::before{content:"";position:absolute;left:0;top:2px;width:880px;height:42px;border-radius:6px;background:rgba(216,212,200,.08)}
+.row.on .name{color:#EDEBE3}
 
 /* ---------- transmission chain ---------- */
 .chain-panel{position:absolute;left:1458px;top:184px;width:422px;height:422px;background:var(--panel);border:1px solid var(--hair);z-index:1}

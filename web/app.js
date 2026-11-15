@@ -227,12 +227,22 @@ const HOST = {
    ===================================================================== */
 let lang = 'en', locale = 'en-GB', nf = null;
 let SNAP = null, WORLD = null, TRANS = null;
-let EVENTS = [], RANKED = [], HERO = null, LATEST = '', LAG = 0;
+let EVENTS = [], RANKED = [], HERO = null, LATEST = '', LAG = 0, rankPage = 0;
 let LEVEL_BY_ISO = new Map(), MARKERS = [], LINKS = [];
 let CONN = new Map();
 let globe = null, chainView = null;
 let lastDraw = -1;
 let lastClock = '';
+
+/* hero rotation + globe focus easing, matching the WPF screen: one report every
+   9 s, a 350 ms opacity fade each way, and a 2.4 s smoothstep turn of the globe. */
+const HERO_ROWS = 6;        // rotation runs over the six rows this page shows
+const HERO_ROT_MS = 9000;   // 9 s per report
+const HERO_FADE_MS = 175;   // fade-out and fade-in each take 350 ms
+const GLOBE_EASE_S = 2.4;   // seconds for the globe to reach the new focus
+let heroFadeBusy = false;
+let heroSwapTimer = null;
+let heroTimer = null;
 
 const $ = function (s) { return document.querySelector(s); };
 const LV_COLOR = ['#79807F', '#D8D4C8', '#C0392B'];
@@ -250,6 +260,17 @@ function pickLang() {
 }
 function esc(v) { return v == null ? '' : String(v); }
 function num(v) { const n = Number(v); return (v == null || v === '' || !isFinite(n)) ? null : n; }
+/* snapshot v3 moved cases/deaths under "metrics"; keep reading the flat fields first
+   so the screen still works with older snapshots. */
+function metricNum(e, k) {
+  if (!e) return null;
+  const direct = num(e[k]);
+  if (direct != null) return direct;
+  return (e.metrics && e.metrics[k] != null) ? num(e.metrics[k]) : null;
+}
+function wrapLon(d) { d = d % 360; if (d > 180) d -= 360; else if (d < -180) d += 360; return d; }
+function smoothstep(u) { u = u < 0 ? 0 : (u > 1 ? 1 : u); return u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2; }
+function pad2(n) { return n < 10 ? '0' + n : String(n); }
 function fmt(n) { return n == null ? '—' : nf.format(n); }
 function fmtPct(v) {
   if (v == null || !isFinite(v)) return '—';
@@ -456,7 +477,7 @@ function buildWatchRows() {
 function updateWatch() {
   const rows = document.querySelectorAll('#rows .row');
   for (let i = 0; i < rows.length; i++) {
-    const row = rows[i], e = RANKED[i];
+    const row = rows[i], e = RANKED[rankPage * 6 + i];
     if (!e) { row.style.display = 'none'; continue; }
     row.style.display = '';
     const s = attention(e), lv = levelOf(s);
@@ -464,13 +485,18 @@ function updateWatch() {
     dot.style.background = LV_COLOR[lv];
     row.querySelector('.name').textContent = countryName(e);
     row.querySelector('.dis').textContent = diseaseName(e.disease, e.disease_en);
-    row.querySelector('.cases').textContent = num(e.cases) != null ? fmt(num(e.cases)) : (num(e.cdcLevel) ? 'CDC ' + num(e.cdcLevel) : '—');
-    row.querySelector('.deaths').textContent = num(e.deaths) != null ? fmt(num(e.deaths)) : '—';
+    const rowCases = metricNum(e, 'cases'), rowDeaths = metricNum(e, 'deaths');
+    row.querySelector('.cases').textContent = rowCases != null ? fmt(rowCases) : (num(e.cdcLevel) ? 'CDC ' + num(e.cdcLevel) : '—');
+    row.querySelector('.deaths').textContent = rowDeaths != null ? fmt(rowDeaths) : '—';
     row.querySelector('.date').textContent = mmdd(e.date);
     const lvEl = row.querySelector('.level');
     lvEl.textContent = t(['low', 'mid', 'high'][lv]);
     lvEl.style.color = LV_COLOR[lv];
+    row.classList.toggle('on', !!(HERO && e === HERO));
   }
+    const firstRow = rankPage * 6 + 1, lastRow = Math.min((rankPage + 1) * 6, RANKED.length);
+    const kick = document.querySelector(".watch-kicker");
+    if (kick) kick.textContent = "WATCHLIST\u00A0\u00A0" + pad2(firstRow) + "\u2013" + pad2(lastRow) + " / " + pad2(RANKED.length);
   const countries = new Set(EVENTS.map(function (e) { return e.iso; })).size;
   setText('#watchFoot', EVENTS.length + ' ' + t('reports') + ' / ' + countries + ' ' + t('countries') +
     '  ·  ' + t('latest') + ' ' + mmdd(LATEST) + '  ·  LAG ' + LAG + 'D');
@@ -482,13 +508,14 @@ function updateHero() {
     setText('#valCases', '—'); setText('#valCfr', '—');
     return;
   }
-  const deaths = num(HERO.deaths), cases = num(HERO.cases);
+  const deaths = metricNum(HERO, 'deaths'), cases = metricNum(HERO, 'cases');
   const big = deaths != null ? deaths : (cases != null ? cases : null);
   const bigStr = big == null ? '—' : fmt(big);
+  const ri = RANKED.indexOf(HERO);
   setText('#heroCountry', countryName(HERO));
   setText('#heroDisease', diseaseName(HERO.disease, HERO.disease_en));
   setText('#heroMeta', cases != null ? t('cumulative') : '');
-  setText('#heroRank', t('rank') + ' 01 / ' + EVENTS.length);
+  setText('#heroRank', ri >= 0 ? t('rank') + ' ' + pad2(ri + 1) + ' / ' + RANKED.length : '');
   setText('#bigLabel', deaths != null ? t('deaths') : (cases != null ? t('cases') : t('official')));
   setText('#bigValue', bigStr);
   setText('#bigUnit', big != null ? t('unit') : '');
@@ -505,6 +532,65 @@ function updateHero() {
   setText('#factDate', mmdd(HERO.date));
   setText('#factAsOf', mmdd(HERO.date));
   setText('#factSource', sourceName(HERO.source));
+}
+/* ---------------------------------------------------------------
+   hero rotation · every 9 s the focus moves to the next of the six
+   ranked rows. The text fields fade out (350 ms), are swapped while
+   fully transparent, then fade back in; the globe starts its 2.4 s
+   ease at the same moment the new text lands.
+   --------------------------------------------------------------- */
+function heroRows() {
+  /* Prefer entries that actually carry figures: the hero panel is unreadable
+     when the big number is a dash, and the map highlight is the point of the
+     loop. Scanning the top 12 keeps the rotation inside the attention head. */
+  const withFigures = RANKED.filter(function (e) {
+    return metricNum(e, "deaths") != null || metricNum(e, "cases") != null;
+  });
+  if (withFigures.length >= 3) return withFigures.slice(0, HERO_ROWS);
+  return RANKED.slice(0, HERO_ROWS);
+}
+function heroLonOf(e) { const v = e ? num(e.lon) : null; return v == null ? 7 : v; }
+
+function showHero(entry) {
+  HERO = entry || null;
+  /* the table is six rows tall, so it pages to whatever page holds the focus
+     row; otherwise the highlight would point at a row that is not shown. */
+  const heroIdx = HERO ? RANKED.indexOf(HERO) : 0;
+  rankPage = heroIdx >= 0 ? Math.floor(heroIdx / 6) : 0;
+  /* arcs, chips and the transmission chain all hang off the featured disease */
+  LINKS = buildLinks();
+  if (globe) {
+    globe.setData(MARKERS, LINKS, LEVEL_BY_ISO, HERO);
+    globe.focusTo(heroLonOf(HERO));
+  }
+  updateHero();
+  updateWatch();
+  if (chainView) chainView.apply();
+}
+
+function advanceHero() {
+  const list = heroRows();
+  if (list.length < 2 || heroFadeBusy) return;
+  let i = list.indexOf(HERO);
+  if (i < 0) i = 0;
+  const next = list[(i + 1) % list.length];
+  const hero = $('.hero');
+  heroFadeBusy = true;
+  if (!hero) { showHero(next); heroFadeBusy = false; return; }
+  hero.classList.add('is-out');
+  clearTimeout(heroSwapTimer);
+  heroSwapTimer = setTimeout(function () {
+    /* the fields are fully transparent at this point, so the swap cannot flash */
+    showHero(next);
+    void hero.offsetWidth;            /* flush the swap before the fade-in starts */
+    hero.classList.remove('is-out');
+    setTimeout(function () { heroFadeBusy = false; }, HERO_FADE_MS);
+  }, HERO_FADE_MS);
+}
+
+function startHeroRotation() {
+  clearInterval(heroTimer);
+  heroTimer = setInterval(advanceHero, HERO_ROT_MS);
 }
 function updateClock() {
   const d = new Date();
@@ -750,6 +836,8 @@ function GlobeView(canvas) {
   this.maxN = 0;
   this.X = null; this.Y = null; this.Z = null;
   this.lon0 = 7; this.tilt = 20;
+  /* eased longitude: fromLon -> toLon over GLOBE_EASE_S, plus a 2 degree drift */
+  this.baseLon = 7; this.fromLon = 7; this.toLon = 7; this.moveStart = -100;
   this.markers = [];
   this.links = [];
   this.hero = null;
@@ -782,6 +870,21 @@ GlobeView.prototype.setWorld = function (world) {
 };
 GlobeView.prototype.setData = function (markers, links, levels, hero) {
   this.markers = markers; this.links = links; this.levels = levels; this.hero = hero;
+};
+/* Ease the view towards a longitude (degrees east). Starts where the sphere is
+   right now, folds the delta into +/-180 so the turn is always the short way. */
+GlobeView.prototype.focusTo = function (lonDeg, time) {
+  const t = (time == null) ? (performance.now() / 1000) : time;
+  const target = lonDeg == null || !isFinite(lonDeg) ? this.toLon : lonDeg;
+  if (this.moveStart < 0 && Math.abs(wrapLon(target - this.baseLon)) < 0.01) return;
+  this.fromLon = this.baseLon;
+  this.toLon = target;
+  this.moveStart = t;
+};
+/* First paint: land on the first report instead of flying in from longitude 0. */
+GlobeView.prototype.snapTo = function (lonDeg) {
+  const v = (lonDeg == null || !isFinite(lonDeg)) ? 7 : lonDeg;
+  this.baseLon = v; this.lon0 = v; this.fromLon = v; this.toLon = v; this.moveStart = -1;
 };
 GlobeView.prototype.resize = function (q) {
   if (q === this.q && this.cv.width > 0 && this.gOcean) return;
@@ -821,8 +924,18 @@ GlobeView.prototype.draw = function (time) {
   ctx.setTransform(q, 0, 0, q, 0, 0);
   ctx.clearRect(0, 0, this.W, this.H);
 
-  const slow = time * Math.PI * 2 / 300;
-  this.lon0 = 7 + 10 * Math.sin(slow);
+  /* longitude = eased focus + a small residual drift so the sphere never freezes */
+  if (this.moveStart >= 0) {
+    const u = (time - this.moveStart) / GLOBE_EASE_S;
+    if (u >= 1) {
+      this.baseLon = this.toLon;
+      this.fromLon = this.toLon;
+      this.moveStart = -1;
+    } else {
+      this.baseLon = this.fromLon + wrapLon(this.toLon - this.fromLon) * smoothstep(u);
+    }
+  }
+  this.lon0 = this.baseLon + 2 * Math.sin(time * Math.PI * 2 / 210);
   this.tilt = 20 + 1.0 * Math.sin(time * Math.PI * 2 / 210);
   this.reticlePhase = (Math.sin(time * 2.1) + 1) / 2;
 
@@ -1155,6 +1268,7 @@ async function boot() {
   globe.setWorld(WORLD);
   globe.resize(1);
   globe.setData(MARKERS, LINKS, LEVEL_BY_ISO, HERO);
+  globe.snapTo(heroLonOf(HERO));   /* no fly-in on the first frame */
 
   chainView = new ChainView();
   chainView.build();
@@ -1162,6 +1276,7 @@ async function boot() {
 
   updateSyncLine();
   startClock();
+  startHeroRotation();
 
   window.__perf = { frames: 0, total: 0, last: 0, max: 0, t: 0, start: performance.now() };
   window.__app = {
