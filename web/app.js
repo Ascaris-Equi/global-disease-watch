@@ -246,13 +246,16 @@ function isPortrait() {
 }
 const MOBILE_BOOT = isPortrait();     /* phone texture size is fixed at boot */
 const M_W = 1080;                     /* portrait design base, 9:16 */
-const M_HERO_H = 446;                 /* portrait band heights, design px */
-const M_WATCH_H = 240;
-const M_GLOBE_H = 600;                /* globe band = sphere diameter in portrait */
-const M_CHAIN_H = 392;                /* transmission chain band */
+const M_MID_H = 598;                  /* middle band: globe left + stats column right */
+const M_HERO_H = 340;                 /* portrait band heights, design px */
+const M_WATCH_H = 220;
+const M_CHAIN_H = 520;                /* transmission chain band (enlarged) */
+const M_GLOBE_D = 580;                /* sphere diameter inside the middle band */
+const M_GLOBE_W = 692;                /* globe drawing box width (arcs reach 1.185R) */
+const M_GLOBE_LEFT = 56;              /* sphere's left edge; keeps the left arc bow on screen */
 let pageRows = MOBILE_BOOT ? 2 : 6;   /* ranked rows per watchlist page */
-let rowTop = MOBILE_BOOT ? 112 : 82;  /* first row y inside .watch */
-let rowStep = MOBILE_BOOT ? 60 : 46;
+let rowTop = MOBILE_BOOT ? 104 : 82;  /* first row y inside .watch */
+let rowStep = MOBILE_BOOT ? 58 : 46;
 
 /* hero rotation + globe focus easing, matching the WPF screen: one report every
    9 s, a 350 ms opacity fade each way, and a 2.4 s smoothstep turn of the globe. */
@@ -266,6 +269,9 @@ let heroTimer = null;
 
 const $ = function (s) { return document.querySelector(s); };
 const LV_COLOR = ['#79807F', '#D9A44E', '#C0392B'];
+/* portrait readability pass: level colours lifted to clear 4.5:1 on the stage */
+const LV_COLOR_P = ['#9AA3A8', '#E0B24E', '#F47A64'];
+function lvColor(lv) { return (isPortrait() ? LV_COLOR_P : LV_COLOR)[lv]; }
 
 function t(k) {
   const d = UI[lang] || UI.en;
@@ -525,7 +531,7 @@ function updateWatch() {
     row.style.display = '';
     const s = attention(e), lv = levelOf(s);
     const dot = row.querySelector('.dot');
-    dot.style.background = LV_COLOR[lv];
+    dot.style.background = lvColor(lv);
     const rowName = row.querySelector('.name'), rowDis = row.querySelector('.dis'), rowCases = row.querySelector('.cases');
     rowName.textContent = countryName(e);
     rowDis.textContent = diseaseName(e.disease, e.disease_en);
@@ -535,13 +541,13 @@ function updateWatch() {
     row.querySelector('.date').textContent = mmdd(e.date);
     const lvEl = row.querySelector('.level');
     lvEl.textContent = t(['low', 'mid', 'high'][lv]);
-    lvEl.style.color = LV_COLOR[lv];
+    lvEl.style.color = lvColor(lv);
     row.classList.toggle('on', !!(HERO && e === HERO));
     /* portrait type is larger relative to the screen, so a long country or
        disease name gets its size stepped down instead of being cut off */
-    fitText(rowName, 18);
-    fitText(rowDis, 16);
-    fitText(rowCases, 20);
+    fitText(rowName, 22);
+    fitText(rowDis, 22);
+    fitText(rowCases, 22);
   }
     const firstRow = rankPage * pageRows + 1, lastRow = Math.min((rankPage + 1) * pageRows, RANKED.length);
     const kick = document.querySelector(".watch-kicker");
@@ -577,7 +583,7 @@ function updateHero() {
   for (let i = 0; i < bars.length; i++) bars[i].className = (i < lv * 2 + 1) ? 'on' : '';
   const att = $('#attLevel');
   att.textContent = t(['low', 'mid', 'high'][lv]);
-  att.style.color = LV_COLOR[lv];
+  att.style.color = lvColor(lv);
   setText('#factDate', mmdd(HERO.date));
   setText('#factAsOf', mmdd(HERO.date));
   setText('#factSource', sourceName(HERO.source));
@@ -619,6 +625,7 @@ function heroLonOf(e) { const v = e ? num(e.lon) : null; return v == null ? 7 : 
 
 function showHero(entry) {
   HERO = entry || null;
+  if (window.__app) window.__app.heroNow = HERO;   /* debug/test handle, no layout effect */
   /* the table is `pageRows` rows tall, so it pages to whatever page holds the
      focus row; otherwise the highlight would point at a row that is not shown.
      landscape: 6 rows/page, portrait: 3 rows/page. */
@@ -728,19 +735,19 @@ function routeCurve(a, b, from, to, nodes) {
 }
 
 /* ---------------------------------------------------------------------
-   portrait chain geometry (design px, box 1032x392 at the stage's 24 px side
+   portrait chain geometry (design px, box 1032x520 at the stage's 24 px side
    margin). The nine hosts + 人 sit on a 2x5 grid; row 0 carries its label
    above the icon and row 1 below it, which leaves the corridor between the
    rows free of text. Every red route is drawn orthogonally through that
    corridor (one lane per step) so it never crosses an icon or a label.
    --------------------------------------------------------------------- */
 const CHAIN_PORTRAIT = {
-  W: 1032, H: 392,
+  W: 1032, H: 520,
   cols: 5,
-  rowY: [130, 256],
-  iconR: 42,        /* 84 px icons, 24 px labels (design px) */
-  humanR: 48,
-  lanes: [186, 202, 194]
+  rowY: [160, 352],
+  iconR: 54,        /* 108 px icons */
+  humanR: 60,       /* 120 px human node */
+  lanes: [238, 256, 274]
 };
 /* rounded polyline → svg path d (8 px corner radius) */
 function roundPolyline(pts, rad) {
@@ -905,10 +912,10 @@ ChainView.prototype.buildPortrait = function () {
   const defs = svg('defs');
   [['arw', '#343B3E'], ['arw-hot', '#C0392B']].forEach(function (m) {
     const mk = svg('marker', {
-      id: m[0], viewBox: '0 0 18 18', refX: 15.5, refY: 9,
-      markerWidth: 15, markerHeight: 15, markerUnits: 'userSpaceOnUse', orient: 'auto'
+      id: m[0], viewBox: '0 0 22 22', refX: 19, refY: 11,
+      markerWidth: 19, markerHeight: 19, markerUnits: 'userSpaceOnUse', orient: 'auto'
     });
-    mk.appendChild(svg('path', { d: 'M2,2 L16,9 L2,16 Z', fill: m[1] }));
+    mk.appendChild(svg('path', { d: 'M2,2 L20,11 L2,20 Z', fill: m[1] }));
     defs.appendChild(mk);
   });
   svgEl.appendChild(defs);
@@ -1003,12 +1010,12 @@ ChainView.prototype.applyPortraitEdges = function (hot) {
     if (!pts) continue;
     e.pts = pts;
     e.cum = polylineCum(pts);
-    e.el.setAttribute('d', roundPolyline(pts, 8));
+    e.el.setAttribute('d', roundPolyline(pts, 10));
     e.el.className.baseVal = 'edge hot';
     e.el.setAttribute('marker-end', 'url(#arw-hot)');
     e.el.style.display = '';
     if (!e.dot) {
-      e.dot = svg('circle', { r: 6, class: 'flow', cx: -20, cy: -20 });
+      e.dot = svg('circle', { r: 8, class: 'flow', cx: -20, cy: -20 });
       e.phase = this.hotDots.length * 0.34;
       $('#chainEdges').appendChild(e.dot);
       this.hotDots.push(e);
@@ -1086,7 +1093,7 @@ ChainView.prototype.apply = function () {
   }
 };
 ChainView.prototype.tick = function (time) {
-  const off = -time * (this.portrait ? 30 : 14);
+  const off = -time * (this.portrait ? 36 : 14);
   for (const e of this.hotDots) {
     const u = ((time * 0.32 + (e.phase || 0)) % 1 + 1) % 1;
     const p = (this.portrait && e.pts) ? polylinePoint(e.pts, e.cum, u) : bez(e.pa, e.c, e.pb, u);
@@ -2106,8 +2113,8 @@ function ensureMode() {
   const next = p ? 2 : 6;
   if (next !== pageRows) {
     pageRows = next;
-    rowTop = p ? 112 : 82;
-    rowStep = p ? 60 : 46;
+    rowTop = p ? 104 : 82;
+    rowStep = p ? 58 : 46;
     buildWatchRows();
     /* the old page number was counted in rows of the other size — re-derive it
        from the focus so the table never points past the end of the list */
@@ -2147,10 +2154,12 @@ function layoutLandscape(vw, vh) {
 /* portrait: a 1080-wide design whose height follows the device (1920 at 9:16).
    The stage is scaled to the viewport width, so the design height is whatever
    the device gives us; the fixed bands keep the 1080x1920 reference heights
-   (bar 96 / globe 600 / hero 446 / chain 392 / watch 240 / bar 96) and the
-   spare height of taller phones is shared out as equal gaps between the five
-   seams, so the reference screen is filled edge to edge with only hairlines.
-   CSS places every band from the variables set here. */
+   (bars 96 / middle 598 / hero 340 / chain 520 / watch 220) and the spare
+   height of taller phones is shared out as equal gaps between the five seams,
+   so the reference screen is filled edge to edge with only hairlines.
+   The middle band is one horizontal row: sphere on the left (leaning left,
+   arcs included) and the 报告病例/病死率/关注度 column against the right
+   margin. CSS places every band from the variables set here. */
 function layoutPortrait(vw, vh) {
   const stage = $('#stage');
   const s = vw / M_W;
@@ -2164,36 +2173,30 @@ function layoutPortrait(vw, vh) {
 
   const safe = readSafeInsets(s);
   const barH = Math.max(88, Math.min(132, Math.round(stageH * 0.05)));
-  /* the globe band is exactly the sphere diameter; on a very short stage the
-     globe gives up the difference before anything is allowed to overlap */
-  let globeH = M_GLOBE_H;
-  const bands = function (g) {
-    return barH * 2 + safe.top + safe.bottom + g + M_HERO_H + M_CHAIN_H + M_WATCH_H;
-  };
-  let spare = stageH - bands(globeH);
-  if (spare < 20) {
-    globeH = Math.max(360, globeH + spare - 20);
-    spare = stageH - bands(globeH);
-  }
+  let spare = stageH - (barH * 2 + safe.top + safe.bottom +
+    M_MID_H + M_HERO_H + M_CHAIN_H + M_WATCH_H);
   const gapBase = Math.max(2, Math.floor(spare / 5));
   const gapExtra = Math.max(0, spare - gapBase * 5);
   const gaps = [0, 1, 2, 3, 4].map(function (i) { return gapBase + (i < gapExtra ? 1 : 0); });
 
-  const gW = M_W - 48;
-  const R = Math.max(120, Math.floor(globeH / 2));
+  const R = Math.floor(M_GLOBE_D / 2);
   const canvasH = Math.ceil(R * 2.4);
-  const globeTop = barH + safe.top + gaps[0];
-  const heroTop = globeTop + globeH + gaps[1];
+  const midTop = barH + safe.top + gaps[0];
+  const heroTop = midTop + M_MID_H + gaps[1];
   const chainTop = heroTop + M_HERO_H + gaps[2];
   const watchTop = chainTop + M_CHAIN_H + gaps[3];
-  const canvasTop = globeTop + Math.round((globeH - canvasH) / 2);
+  /* the sphere is vertically centred in the middle band; its drawing box is
+     taller than the sphere (arcs bow to 1.185R) but the extra is transparent */
+  const canvasTop = midTop + Math.round((M_MID_H - canvasH) / 2);
 
   stage.style.setProperty('--stage-h', stageH + 'px');
   stage.style.setProperty('--bar-h', barH + 'px');
   stage.style.setProperty('--safe-top', safe.top + 'px');
   stage.style.setProperty('--safe-bottom', safe.bottom + 'px');
-  stage.style.setProperty('--globe-left', '24px');
-  stage.style.setProperty('--globe-w', gW + 'px');
+  stage.style.setProperty('--mid-top', midTop + 'px');
+  stage.style.setProperty('--mid-h', M_MID_H + 'px');
+  stage.style.setProperty('--globe-left', '0px');
+  stage.style.setProperty('--globe-w', M_GLOBE_W + 'px');
   stage.style.setProperty('--globe-canvas-top', canvasTop + 'px');
   stage.style.setProperty('--globe-canvas-h', canvasH + 'px');
   stage.style.setProperty('--hero-top', Math.round(heroTop) + 'px');
@@ -2202,7 +2205,8 @@ function layoutPortrait(vw, vh) {
   stage.style.setProperty('--chain-h', M_CHAIN_H + 'px');
   stage.style.setProperty('--watch-top', Math.round(watchTop) + 'px');
   stage.style.setProperty('--watch-h', M_WATCH_H + 'px');
-  if (globe) globe.setViewBox(gW, canvasH, gW / 2, canvasH / 2, R);
+  /* sphere centre in the drawing box: M_GLOBE_LEFT + R from the box's left */
+  if (globe) globe.setViewBox(M_GLOBE_W, canvasH, M_GLOBE_LEFT + R, canvasH / 2, R);
   return s;
 }
 function fitStage() {
@@ -2273,7 +2277,7 @@ async function boot() {
   window.__app = {
     lang: lang, schema: SNAP ? SNAP.schema : null, events: EVENTS.length,
     countries: new Set(EVENTS.map(function (e) { return e.iso; })).size,
-    hero: HERO, ranked: RANKED.length,
+    hero: HERO, heroNow: HERO, ranked: RANKED.length,
     worldCountries: WORLD.countries.length, lag: LAG, latest: LATEST,
     portrait: isPortrait(), pageRows: pageRows,
     tex: { w: TEX_W, h: TEX_H, mobile: MOBILE_BOOT, k: TEX_K }

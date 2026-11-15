@@ -29,13 +29,18 @@
     <div class="signal-bar" aria-hidden="true"></div>
     <div class="big-label" id="bigLabel"></div>
     <div class="big"><span id="bigValue">—</span><span class="unit" id="bigUnit"></span></div>
-    <div class="hair hr1" aria-hidden="true"></div>
-    <div class="kv v1"><span class="k" data-t="reported"></span><span class="v" id="valCases">—</span></div>
-    <div class="kv v2"><span class="k" data-t="cfr"></span><span class="v" id="valCfr">—</span></div>
-    <div class="hair hr2" aria-hidden="true"></div>
-    <div class="att-label" data-t="attention"></div>
-    <div class="meter" id="meter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-    <div class="att-level" id="attLevel"></div>
+    <!-- portrait moves this block into the right-hand column of the middle
+         band (globe on the left); the wrapper is static in landscape so the
+         desktop layout keeps the elements positioned against .hero -->
+    <div class="stats">
+      <div class="hair hr1" aria-hidden="true"></div>
+      <div class="kv v1"><span class="k" data-t="reported"></span><span class="v" id="valCases">—</span></div>
+      <div class="kv v2"><span class="k" data-t="cfr"></span><span class="v" id="valCfr">—</span></div>
+      <div class="hair hr2" aria-hidden="true"></div>
+      <div class="att-label" data-t="attention"></div>
+      <div class="meter" id="meter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="att-level" id="attLevel"></div>
+    </div>
     
     <dl class="facts">
       <dt data-t="reportDate"></dt><dd id="factDate">—</dd>

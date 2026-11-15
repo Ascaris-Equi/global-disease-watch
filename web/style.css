@@ -1,6 +1,6 @@
 :root{
-  --bg:#050607; --black:#000; --bone:#D8D4C8; --steel:#79807F; --steel-dim:#5A6161;
-  --signal:#8C1C1C; --alert:#C0392B; --hair:#23272A; --hair2:#2E3538; --grid:#16191A;
+  --bg:#050607; --black:#000; --bone:#EDEAE2; --steel:#8E9799; --steel-dim:#7C8588;
+  --signal:#A32020; --alert:#E05A4A; --hair:#23272A; --hair2:#2E3538; --grid:#16191A;
   --panel:#0A0B0B; --cell:#16191A;
   --sans:"Segoe UI","Microsoft YaHei UI","Microsoft YaHei","Noto Sans SC","PingFang SC","Hiragino Sans",sans-serif;
   --mono:"Consolas","Cascadia Mono","SFMono-Regular","Menlo","Noto Sans Mono",monospace;
@@ -31,13 +31,13 @@ body.idle{cursor:none}
 
 /* ---------- hero ---------- */
 .hero{position:absolute;left:1000px;top:0;width:880px;height:1080px}
-.kicker{position:absolute;left:0;top:94px;font-size:11px;line-height:1;color:var(--steel);letter-spacing:.02em}
-.rank{position:absolute;right:0;top:93px;width:220px;text-align:right;font-family:var(--mono);font-size:10px;line-height:1;color:#444B4B;letter-spacing:.08em}
+.kicker{position:absolute;left:0;top:94px;font-size:13px;line-height:1;color:var(--steel);letter-spacing:.02em}
+.rank{position:absolute;right:0;top:93px;width:220px;text-align:right;font-family:var(--mono);font-size:12px;line-height:1;color:#444B4B;letter-spacing:.08em}
 .country{position:absolute;left:0;top:104px;margin:0;font-size:40px;line-height:48px;font-weight:600;letter-spacing:.005em;color:var(--bone);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:440px}
 .disease{position:absolute;left:0;top:156px;font-size:20px;line-height:24px;color:var(--steel);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:400px}
-.meta{position:absolute;right:440px;top:113px;width:260px;text-align:right;font-size:11px;line-height:1.3;color:#4A5050;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{position:absolute;right:440px;top:113px;width:260px;text-align:right;font-size:13px;line-height:1.3;color:#4A5050;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .signal-bar{position:absolute;left:0;top:198px;width:2px;height:20px;background:var(--signal)}
-.big-label{position:absolute;left:10px;top:202px;font-size:11px;line-height:1.1;color:var(--steel)}
+.big-label{position:absolute;left:10px;top:202px;font-size:13px;line-height:1.1;color:var(--steel)}
 .big{position:absolute;left:0;top:192px;font-size:96px;line-height:1;font-weight:300;color:var(--bone);white-space:nowrap;letter-spacing:-.015em;font-variant-numeric:tabular-nums}
 .big.s7{font-size:84px}.big.s9{font-size:64px}.big.sx{font-size:52px}
 .big .unit{font-size:20px;line-height:1;color:var(--steel);font-weight:400;letter-spacing:0;margin-left:14px;vertical-align:baseline}
@@ -45,18 +45,18 @@ body.idle{cursor:none}
 .hr1{top:324px}.hr2{top:394px}
 .kv{position:absolute;top:338px;width:160px}
 .kv.v1{left:0}.kv.v2{left:190px}
-.kv .k{display:block;font-family:var(--mono);font-size:10px;line-height:1;color:#3A4141;letter-spacing:.04em}
+.kv .k{display:block;font-family:var(--mono);font-size:12px;line-height:1;color:#3A4141;letter-spacing:.04em}
 .kv .v{display:block;margin-top:3px;font-size:26px;line-height:30px;font-weight:300;color:var(--bone);font-variant-numeric:tabular-nums;white-space:nowrap}
-.att-label{position:absolute;left:0;top:406px;font-size:11px;line-height:1;color:var(--steel)}
+.att-label{position:absolute;left:0;top:406px;font-size:13px;line-height:1;color:var(--steel)}
 .meter{position:absolute;left:62px;top:411px;display:flex;gap:4px}
 .meter i{display:block;width:24px;height:5px;background:var(--grid)}
 .meter i.on{background:var(--alert)}
-.att-level{position:absolute;left:210px;top:405px;font-size:11px;line-height:1;color:var(--steel)}
-.att-note{position:absolute;left:252px;top:406px;font-family:var(--mono);font-size:10px;line-height:1;color:#3A4141;white-space:nowrap}
+.att-level{position:absolute;left:210px;top:405px;font-size:13px;line-height:1;color:var(--steel)}
+.att-note{position:absolute;left:252px;top:406px;font-family:var(--mono);font-size:12px;line-height:1;color:#3A4141;white-space:nowrap}
 .facts{position:absolute;left:0;top:460px;width:440px;margin:0;display:grid;grid-template-columns:1fr auto;row-gap:0}
-.facts dt{margin:0;height:22px;line-height:22px;font-size:11px;color:#3A4141}
-.facts dd{margin:0;height:22px;line-height:22px;font-size:11px;color:var(--steel);text-align:right;font-variant-numeric:tabular-nums}
-.arc-note{position:absolute;left:0;top:538px;font-size:10px;line-height:1.2;color:#3A4141;white-space:nowrap}
+.facts dt{margin:0;height:22px;line-height:22px;font-size:13px;color:#3A4141}
+.facts dd{margin:0;height:22px;line-height:22px;font-size:13px;color:var(--steel);text-align:right;font-variant-numeric:tabular-nums}
+.arc-note{position:absolute;left:0;top:538px;font-size:12px;line-height:1.2;color:#3A4141;white-space:nowrap}
 
 /* hero rotation: the data fields fade out/in while the chrome stays put.
    350 ms each way; the text is swapped while the fields are fully transparent. */
@@ -73,12 +73,12 @@ body.idle{cursor:none}
 
 /* ---------- watchlist ---------- */
 .watch{position:absolute;left:1000px;top:624px;width:880px;height:390px}
-.watch-kicker{position:absolute;left:0;top:0;font-family:var(--mono);font-size:10px;line-height:1;color:var(--steel);letter-spacing:.12em}
-.watch-title{position:absolute;left:0;top:11px;margin:0;font-size:20px;line-height:24px;font-weight:600;letter-spacing:.02em;color:var(--bone)}
-.watch-sort{position:absolute;right:0;top:18px;font-family:var(--mono);font-size:10px;line-height:1;color:#3A4141;letter-spacing:.06em}
+.watch-kicker{position:absolute;left:0;top:0;font-family:var(--mono);font-size:12px;line-height:1;color:var(--steel);letter-spacing:.12em}
+.watch-title{position:absolute;left:0;top:24px;margin:0;font-size:20px;line-height:24px;font-weight:600;letter-spacing:.02em;color:var(--bone)}
+.watch-sort{position:absolute;right:0;top:18px;font-family:var(--mono);font-size:12px;line-height:1;color:#3A4141;letter-spacing:.06em}
 .watch-rule{position:absolute;left:0;width:880px;height:1px;background:var(--hair)}
 .wr1{top:52px}.wr2{top:69px;opacity:0}.wr3{top:352px}.wr4{top:388px}
-.watch-head{position:absolute;left:0;top:54px;width:880px;height:12px;font-family:var(--mono);font-size:10px;line-height:1;color:#3A4141;letter-spacing:.06em}
+.watch-head{position:absolute;left:0;top:54px;width:880px;height:12px;font-family:var(--mono);font-size:12px;line-height:1;color:#3A4141;letter-spacing:.06em}
 .watch-head span{position:absolute;top:0;white-space:nowrap}
 .c-country{left:16px}.c-disease{left:148px}
 .c-cases{left:290px;width:150px;text-align:right}
@@ -92,18 +92,18 @@ body.idle{cursor:none}
 .row .dis{position:absolute;left:148px;top:1px;width:132px;font-size:13px;line-height:18px;color:var(--steel);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .row .cases{position:absolute;left:290px;top:1px;width:150px;text-align:right;font-size:15px;line-height:20px;color:var(--bone);font-variant-numeric:tabular-nums;white-space:nowrap}
 .row .deaths{position:absolute;left:450px;top:1px;width:140px;text-align:right;font-size:15px;line-height:20px;color:var(--steel);font-variant-numeric:tabular-nums}
-.row .date{position:absolute;left:620px;top:3px;width:60px;font-size:11px;line-height:14px;color:#4A5050;font-variant-numeric:tabular-nums}
+.row .date{position:absolute;left:620px;top:3px;width:60px;font-size:13px;line-height:14px;color:#4A5050;font-variant-numeric:tabular-nums}
 .row .level{position:absolute;left:810px;top:1px;width:70px;text-align:right;font-size:12px;line-height:18px;color:var(--steel)}
 .row .sep{position:absolute;left:0;top:-9px;width:880px;height:1px;background:var(--grid)}
-.watch-foot{position:absolute;left:0;top:360px;font-family:var(--mono);font-size:10px;line-height:1;color:var(--steel);letter-spacing:.06em;white-space:nowrap}
+.watch-foot{position:absolute;left:0;top:360px;font-family:var(--mono);font-size:12px;line-height:1;color:var(--steel);letter-spacing:.06em;white-space:nowrap}
 
-/* the ranked row that matches the rotating hero — WPF paints the same soft band */
+/* the ranked row that matches the rotating hero 鈥?WPF paints the same soft band */
 .row.on::before{content:"";position:absolute;left:0;top:2px;width:880px;height:42px;border-radius:6px;background:rgba(216,212,200,.08)}
 .row.on .name{color:#EDEBE3}
 
 /* ---------- transmission chain ---------- */
 .chain-panel{position:absolute;left:1458px;top:184px;width:422px;height:422px;background:var(--panel);border:1px solid var(--hair);z-index:1}
-.chain-kicker{position:absolute;left:1459px;top:164px;font-family:var(--mono);font-size:10px;line-height:1;color:var(--steel);letter-spacing:.08em;z-index:3;white-space:nowrap}
+.chain-kicker{position:absolute;left:1459px;top:164px;font-family:var(--mono);font-size:12px;line-height:1;color:var(--steel);letter-spacing:.08em;z-index:3;white-space:nowrap}
 .chain-graph{position:absolute;left:1470px;top:160px;width:398px;height:422px;z-index:2}
 .chain-edges{position:absolute;left:0;top:0;overflow:visible}
 .chain-nodes{position:absolute;left:0;top:0;width:398px;height:422px}
@@ -117,7 +117,7 @@ body.idle{cursor:none}
 .node.on .glyph{filter:grayscale(1) brightness(1.85) opacity(.95)}
 .node.on .label{color:var(--bone)}
 .chips{position:absolute;left:1482px;top:198px;display:flex;gap:6px;height:22px;max-width:342px;overflow:hidden;z-index:4;white-space:nowrap}
-.chip{flex:0 0 auto;border:1px solid rgba(121,128,127,.23);background:rgba(121,128,127,.06);border-radius:10px;padding:2px 9px 3px;font-size:11px;line-height:17px;color:rgba(121,128,127,.67);max-width:200px;overflow:hidden;text-overflow:ellipsis}
+.chip{flex:0 0 auto;border:1px solid rgba(121,128,127,.23);background:rgba(121,128,127,.06);border-radius:10px;padding:2px 9px 3px;font-size:13px;line-height:17px;color:rgba(121,128,127,.67);max-width:200px;overflow:hidden;text-overflow:ellipsis}
 .chip.on{color:var(--alert);border-color:rgba(192,57,43,.78);background:rgba(192,57,43,.18)}
 .chain-title{position:absolute;left:1482px;top:574px;font-size:12px;line-height:16px;font-weight:600;color:var(--alert);z-index:3;max-width:374px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* portrait only: the human-to-human note sits on the chain's bottom line */
@@ -127,7 +127,7 @@ body.idle{cursor:none}
 .chain-edges .loop{fill:none;stroke:#2E3538;stroke-width:1.1;stroke-dasharray:4 4}
 .chain-edges .loop.hot{stroke:var(--alert);stroke-width:2;opacity:1}
 .chain-edges .flow{fill:var(--alert)}
-.chain-edges .p2p{font-family:var(--sans);font-size:11px;fill:#3E4545}
+.chain-edges .p2p{font-family:var(--sans);font-size:13px;fill:#3E4545}
 .chain-edges .p2p.hot{fill:var(--alert)}
 
 /* ---------- letterbox ----------
@@ -139,13 +139,13 @@ body.idle{cursor:none}
 .bar.bottom{top:1015px;height:calc(65px + var(--pady,0px));border-top:1px solid var(--hair)}
 .brand{position:absolute;left:32px;top:calc(25px + var(--pady,0px) * 0.5);display:flex;align-items:baseline;gap:16px}
 .brand-name{font-size:12px;line-height:14px;font-weight:600;color:var(--bone);letter-spacing:.01em}
-.brand-tag{font-family:var(--mono);font-size:10px;line-height:12px;color:var(--steel);letter-spacing:.1em;white-space:nowrap}
-.agencies{position:absolute;right:32px;top:calc(26px + var(--pady,0px) * 0.5);font-family:var(--mono);font-size:10px;line-height:12px;color:var(--steel);letter-spacing:.1em}
-.clock{position:absolute;left:32px;top:calc(26px + var(--pady,0px) * 0.5);font-family:var(--mono);font-size:10px;line-height:12px;color:var(--steel);letter-spacing:.04em;font-variant-numeric:tabular-nums}
+.brand-tag{font-family:var(--mono);font-size:12px;line-height:12px;color:var(--steel);letter-spacing:.1em;white-space:nowrap}
+.agencies{position:absolute;right:32px;top:calc(26px + var(--pady,0px) * 0.5);font-family:var(--mono);font-size:12px;line-height:12px;color:var(--steel);letter-spacing:.1em}
+.clock{position:absolute;left:32px;top:calc(26px + var(--pady,0px) * 0.5);font-family:var(--mono);font-size:12px;line-height:12px;color:var(--steel);letter-spacing:.04em;font-variant-numeric:tabular-nums}
 /* the portrait layout moves the clock up into the top strip; the landscape
    copy inside the bottom footer is the only one on screen there */
 .bar.top .clock{display:none}
-.sync{position:absolute;left:182px;top:calc(26px + var(--pady,0px) * 0.5);font-family:var(--mono);font-size:10px;line-height:12px;color:var(--steel);letter-spacing:.04em;white-space:nowrap}
+.sync{position:absolute;left:182px;top:calc(26px + var(--pady,0px) * 0.5);font-family:var(--mono);font-size:12px;line-height:12px;color:var(--steel);letter-spacing:.04em;white-space:nowrap}
 .sync .sep{color:#3A4141;margin:0 14px}
 
 /* ---------- corners ---------- */
@@ -162,123 +162,153 @@ body.idle{cursor:none}
    stage stops being 1920x1080 and becomes a 1080-wide, 9:16-based design
    (1080x1920 at the reference aspect) whose height is set by app.js to the
    device; every band is placed from the custom properties it sets there:
-     --bar-h / --safe-top / --safe-bottom   top and bottom strips
-     --globe-left / --globe-w               globe band box
-     --globe-canvas-top / --globe-canvas-h  drawing box (taller than the band
-                                            so the arcs are not cut at 1.2R)
-     --hero-top / --hero-h / --watch-top / --watch-h
+     --bar-h / --safe-top / --safe-bottom     top and bottom strips
+     --mid-top / --mid-h                     globe + stats column band
+     --globe-left / --globe-w                globe drawing box
+     --globe-canvas-top / --globe-canvas-h   drawing box (taller than the
+                                             sphere so the arcs are not cut)
+     --hero-top / --hero-h
+     --chain-top / --chain-h
+     --watch-top / --watch-h
    The landscape rules above are never touched: this block only applies while
-   the viewport is portrait.
+   the viewport is portrait. Readability pass: every text is >= 22 design px,
+   secondary text is #9AA3A8 or lighter (>= 4.5:1 on the dark stage) and
+   primary text is bone (#E9E5DA, >= 7:1), small caps labels are weight 500,
+   no negative tracking, and body-ish line boxes are >= 1.35x their type size.
    ===================================================================== */
 @media (orientation: portrait), (max-aspect-ratio: 1/1) {
+  :root{
+    /* portrait palette: lifted so every label clears 4.5:1 on #050607/#0A0B0B */
+    --steel:#9AA3A8; --steel-dim:#8A9398; --bone:#E9E5DA; --alert:#E86450; --signal:#B3392B;
+    --hair:#2A3033; --hair2:#3A4247; --grid:#262C2F;
+  }
   #stage{width:1080px;height:var(--stage-h,1920px)}
 
   /* ---------- narrow top strip: brand + clock ---------- */
-  .bar{left:0;width:1080px;height:var(--bar-h,100px);display:flex;align-items:center;
+  .bar{left:0;width:1080px;height:var(--bar-h,96px);display:flex;align-items:center;
        justify-content:space-between;padding:0 32px;background:var(--black)}
-  .bar.top{top:0;height:calc(var(--bar-h,100px) + var(--safe-top,0px));
+  .bar.top{top:0;height:calc(var(--bar-h,96px) + var(--safe-top,0px));
            padding-top:var(--safe-top,0px);border-bottom:1px solid var(--hair)}
   .brand{position:static;display:flex;align-items:baseline;gap:14px}
-  .brand-name{font-size:32px;line-height:36px}
-  .brand-tag{font-size:20px;line-height:24px;letter-spacing:.08em}
+  .brand-name{font-size:32px;line-height:44px;font-weight:600;color:var(--bone)}
+  .brand-tag{font-size:22px;line-height:30px;letter-spacing:.08em;font-weight:500;color:var(--steel)}
   .agencies{display:none}
-  .bar.top .clock{display:block;position:static;font-size:28px;line-height:32px;letter-spacing:.03em}
+  .bar.top .clock{display:block;position:static;font-size:28px;line-height:38px;
+                  letter-spacing:.02em;font-weight:500;color:var(--steel)}
 
-  /* ---------- globe: ~45% of the screen height, 24 design px side margins ---------- */
-  #globe-gl,#globe{left:var(--globe-left,24px);top:var(--globe-canvas-top,50px);
-                   width:var(--globe-w,1032px);height:var(--globe-canvas-h,1000px)}
+  /* ---------- middle band: globe on the left, stats column on the right ---------- */
+  #globe-gl,#globe{left:var(--globe-left,0px);top:var(--globe-canvas-top,57px);
+                   width:var(--globe-w,692px);height:var(--globe-canvas-h,696px)}
   .measure,.corner{display:none}
+  /* .stats is a static wrapper in landscape (desktop keeps the old absolute
+     placements against .hero); portrait turns it into the right-hand column
+     of the middle band: 340 px wide, flush with the 24 px right margin. */
+  .stats{position:absolute;left:692px;top:calc(var(--mid-top,106px) - var(--hero-top,714px));
+         width:340px;height:var(--mid-h,598px);z-index:1}
+  .stats .kv{left:0;width:340px;text-align:right}
+  .stats .kv.v1{top:92px}
+  .stats .kv.v2{top:252px}
+  .stats .kv .k{display:block;font-size:28px;line-height:38px;font-weight:500;
+                color:var(--steel);letter-spacing:.02em;white-space:nowrap}
+  .stats .kv .v{display:block;margin-top:0;font-size:52px;line-height:70px;font-weight:300;
+                color:var(--bone);white-space:nowrap}
+  .stats .hair{left:0;width:340px;background:var(--hair2)}
+  .stats .hr1{top:216px}
+  .stats .hr2{top:376px}
+  .stats .att-label{left:0;top:412px;width:340px;font-size:28px;line-height:38px;font-weight:500;
+                    color:var(--steel);letter-spacing:.02em;text-align:right}
+  .stats .meter{left:auto;right:166px;top:474px;gap:6px}
+  .stats .meter i{width:30px;height:12px}
+  .stats .meter i.on{background:var(--alert)}
+  .stats .att-level{left:auto;right:0;top:458px;width:150px;font-size:30px;line-height:41px;
+                    font-weight:500;text-align:right;color:var(--bone);white-space:nowrap}
 
-  /* ---------- hero: country / disease / big number / CFR / attention ---------- */
-  .hero{left:24px;top:var(--hero-top,1020px);width:1032px;height:var(--hero-h,446px)}
-  .kicker{top:0;font-size:24px;line-height:26px}
-  .rank{top:2px;width:400px;font-size:20px;line-height:24px}
-  .country{top:30px;font-size:68px;line-height:76px;max-width:984px}
-  .disease{top:110px;font-size:36px;line-height:42px;max-width:984px}
+  /* ---------- hero: focus / country / disease / big number / rank ---------- */
+  .hero{left:24px;top:var(--hero-top,714px);width:1032px;height:var(--hero-h,340px)}
+  .kicker{top:0;font-size:24px;line-height:33px;font-weight:500;color:var(--steel)}
+  .rank{top:2px;width:420px;font-size:22px;line-height:30px;font-weight:500;
+        color:var(--steel);letter-spacing:.06em}
+  .country{top:38px;font-size:68px;line-height:92px;max-width:984px;color:var(--bone)}
+  .disease{top:134px;font-size:36px;line-height:49px;max-width:984px;color:var(--steel)}
   .meta{display:none}
-  .signal-bar{top:160px;width:4px;height:26px}
-  .big-label{left:18px;top:158px;font-size:24px;line-height:26px}
-  .big{top:184px;font-size:118px;line-height:118px}
+  .signal-bar{top:190px;width:4px;height:26px;background:var(--signal)}
+  .big-label{left:18px;top:186px;font-size:24px;line-height:33px;font-weight:500;color:var(--steel)}
+  .big{top:220px;font-size:118px;line-height:1;letter-spacing:0;color:var(--bone)}
   .big.s7{font-size:100px}.big.s9{font-size:82px}.big.sx{font-size:66px}
-  .big .unit{font-size:36px;line-height:36px;margin-left:16px}
-  .hair{width:984px}
-  .hr1{top:308px}.hr2{top:400px}
-  .kv{top:316px;width:440px}
-  .kv.v1{left:0}.kv.v2{left:520px}
-  .kv .k{font-size:22px;line-height:24px}
-  .kv .v{margin-top:3px;font-size:46px;line-height:52px}
-  .att-label{top:410px;font-size:24px;line-height:26px}
-  .meter{left:200px;top:416px;gap:6px}
-  .meter i{width:36px;height:8px}
-  .att-level{left:430px;top:408px;font-size:24px;line-height:26px}
+  .big .unit{font-size:36px;line-height:1.35;margin-left:16px;color:var(--steel)}
   .facts,.arc-note{display:none}
 
+  /* ---------- transmission chain ----------
+     Portrait band: kicker + three disease chips on the first line, the nine
+     hosts + 人 as a 2x5 grid with 108 px icons and 28 px labels (row 0 label
+     above its icon, row 1 below, so the corridor between the rows stays free
+     for the route), then the disease name + 人传人 on the bottom line.
+     Geometry lives in app.js (CHAIN_PORTRAIT); this block only styles it. */
+  .chain-panel{left:24px;top:var(--chain-top,1064px);width:1032px;height:var(--chain-h,520px);
+               background:var(--panel);border:1px solid var(--hair);z-index:1}
+  .chain-kicker{left:44px;top:calc(var(--chain-top,1064px) + 12px);font-size:22px;line-height:30px;
+                letter-spacing:.1em;font-weight:500;color:var(--steel);z-index:4}
+  .chips{left:344px;top:calc(var(--chain-top,1064px) + 8px);width:688px;max-width:688px;height:48px;
+         gap:12px;overflow:hidden;z-index:4}
+  .chip{font-size:24px;line-height:34px;padding:5px 16px 6px;border-radius:20px;max-width:220px;
+        font-weight:500;color:var(--steel);border-color:rgba(154,163,168,.34);
+        background:rgba(154,163,168,.07)}
+  .chip.on{color:var(--alert);border-color:rgba(232,100,80,.85);background:rgba(232,100,80,.16)}
+  .chain-graph{left:24px;top:var(--chain-top,1064px);width:1032px;height:var(--chain-h,520px);z-index:2}
+  .chain-nodes{width:1032px;height:100%}
+  .chain-edges{overflow:visible}
+  .chain-edges .edge{stroke-width:5;stroke-dasharray:14 10}
+  .chain-edges .edge.hot{stroke-width:6}
+
+  .node{width:108px;height:108px;border-width:3px;opacity:1}
+  .node .glyph{font-size:64px}
+  .node .label{top:auto;bottom:-44px;width:206px;height:38px;font-size:28px;line-height:38px;
+               white-space:nowrap;overflow:visible;color:var(--steel)}
+  /* row 0 labels sit above the icons, row 1 labels below: the corridor between
+     the two rows is then free of text and the route can cross it */
+  .node.nrow0 .label{top:auto;bottom:calc(100% + 6px)}
+  .node.nrow1 .label{top:auto;bottom:-44px}
+  .node.on .label{color:var(--bone);font-weight:600}
+  .node.human{width:120px;height:120px}
+  .node.human .glyph{font-size:72px}
+  .node.human .label{top:auto;bottom:-38px}
+
+  .chain-title{left:44px;top:calc(var(--chain-top,1064px) + 458px);font-size:34px;line-height:46px;
+               max-width:700px;font-weight:600;color:var(--alert);z-index:4}
+  .chain-rel{display:block;position:absolute;right:44px;top:calc(var(--chain-top,1064px) + 464px);
+             font-size:26px;line-height:35px;font-weight:500;color:var(--steel);
+             letter-spacing:.08em;z-index:4}
+  .chain-rel.on{color:var(--alert)}
+
   /* ---------- watchlist: 2 rows, the page that holds the focus ---------- */
-  .watch{left:24px;top:var(--watch-top,1580px);width:1032px;height:var(--watch-h,240px)}
-  .watch-kicker{font-size:24px;line-height:26px}
-  .watch-title{top:28px;font-size:36px;line-height:40px}
-  .watch-sort{top:42px;font-size:18px;line-height:22px}
-  .watch-rule{width:1032px}
-  .wr1{top:74px}.wr2{display:none}.wr3{top:236px}.wr4{display:none}
-  .watch-head{top:80px;width:1032px;font-size:22px;line-height:26px}
-  .c-country{left:24px}.c-disease{left:334px}
-  .c-cases{left:640px;width:200px}
-  .c-deaths{left:850px;width:150px}
+  .watch{left:24px;top:var(--watch-top,1594px);width:1032px;height:var(--watch-h,220px)}
+  .watch-kicker{font-size:22px;line-height:30px;font-weight:500;color:var(--steel);letter-spacing:.1em}
+  .watch-title{top:30px;font-size:28px;line-height:38px;font-weight:600;color:var(--bone)}
+  .watch-sort{top:32px;font-size:22px;line-height:30px;font-weight:500;color:var(--steel);letter-spacing:.04em}
+  .watch-rule{width:1032px;background:var(--hair2)}
+  .wr1{top:70px}.wr2{display:none}.wr3{display:none}.wr4{display:none}
+  .watch-head{top:74px;width:1032px;font-size:22px;line-height:30px;font-weight:500;
+              color:var(--steel);letter-spacing:.06em}
+  .c-country{left:24px}.c-disease{left:396px}
+  .c-cases{left:800px;width:120px}
+  .c-deaths{left:928px;width:104px}
   .c-date,.c-level{display:none}
-  #rows{width:1032px;height:236px}
-  .row{width:1032px;height:60px}
-  .row .dot{left:0;top:25px;width:10px;height:10px}
-  .row .name{left:24px;top:11px;width:300px;font-size:34px;line-height:38px}
-  .row .dis{left:334px;top:14px;width:300px;font-size:28px;line-height:32px}
-  .row .cases{left:640px;top:11px;width:200px;font-size:34px;line-height:38px}
-  .row .deaths{left:850px;top:11px;width:150px;font-size:34px;line-height:38px}
+  #rows{width:1032px;height:220px}
+  .row{width:1032px;height:58px}
+  .row .dot{left:0;top:24px;width:12px;height:12px;background:var(--steel)}
+  .row .name{left:24px;top:6px;width:360px;font-size:34px;line-height:46px;color:var(--bone)}
+  .row .dis{left:396px;top:10px;width:392px;font-size:28px;line-height:38px;color:var(--steel)}
+  .row .cases{left:800px;top:6px;width:120px;font-size:34px;line-height:46px;color:var(--bone)}
+  .row .deaths{left:928px;top:6px;width:104px;font-size:34px;line-height:46px;color:var(--steel)}
   .row .date,.row .level{display:none}
   .row .sep{top:0;width:1032px}
-  .row.on::before{top:3px;width:1032px;height:54px}
+  .row.on::before{top:2px;width:1032px;height:54px}
   .watch-foot{display:none}
 
   /* ---------- bottom strip: SOURCE · SYNC · LAG ---------- */
-  .bar.bottom{top:auto;bottom:0;height:calc(var(--bar-h,100px) + var(--safe-bottom,0px));
+  .bar.bottom{top:auto;bottom:0;height:calc(var(--bar-h,96px) + var(--safe-bottom,0px));
               padding-bottom:var(--safe-bottom,0px);border-top:1px solid var(--hair)}
   .bar.bottom .clock{display:none}
-  .sync{position:static;flex:1;text-align:center;font-size:26px;line-height:30px}
-
-  /* ---------- transmission chain ----------
-     The landscape card is a 422x422 side panel; portrait gets its own band:
-     one row of disease chips, the nine hosts + 人 as a 2x5 icon grid (labels
-     above row 0, below row 1, so the corridor between the rows stays clear
-     for the red route), and a bottom line with the disease + 人传人 note.
-     Geometry lives in app.js (CHAIN_PORTRAIT); this block only styles it. */
-  .chain-panel{left:24px;top:var(--chain-top,1172px);width:1032px;height:var(--chain-h,392px);
-               background:var(--panel);border:1px solid var(--hair);z-index:1}
-  .chain-kicker{left:44px;top:calc(var(--chain-top,1172px) + 14px);font-size:20px;line-height:24px;
-                letter-spacing:.1em;z-index:4}
-  .chips{left:320px;top:calc(var(--chain-top,1172px) + 6px);width:668px;max-width:668px;height:40px;
-         gap:12px;overflow:hidden;z-index:4}
-  .chip{font-size:22px;line-height:28px;padding:4px 16px 5px;border-radius:18px;max-width:200px}
-  .chain-graph{left:24px;top:var(--chain-top,1172px);width:1032px;height:var(--chain-h,392px);z-index:2}
-  .chain-nodes{width:1032px;height:100%}
-  .chain-edges{overflow:visible}
-  .chain-edges .edge{stroke-width:3;stroke-dasharray:10 8}
-  .chain-edges .edge.hot{stroke-width:4}
-
-  .node{width:84px;height:84px;border-width:2px}
-  .node .glyph{font-size:50px}
-  .node .label{top:auto;bottom:-32px;width:206px;height:28px;font-size:24px;line-height:28px;
-               white-space:nowrap;overflow:visible}
-  /* row 0 labels sit above the icons, row 1 labels below: the corridor between
-     the two rows is then free of text and the route can cross it */
-  .node.nrow0 .label{top:auto;bottom:calc(100% + 4px)}
-  .node.nrow1 .label{top:auto;bottom:-32px}
-  .node.human{width:96px;height:96px}
-  .node.human .glyph{font-size:58px}
-  .node.human .label{top:auto;bottom:-26px}
-
-  .chain-title{left:44px;top:calc(var(--chain-top,1172px) + 338px);font-size:30px;line-height:34px;
-               max-width:680px;z-index:4}
-  .chain-rel{display:block;position:absolute;right:44px;top:calc(var(--chain-top,1172px) + 342px);
-             font-size:24px;line-height:30px;color:var(--steel);letter-spacing:.08em;z-index:4}
-  .chain-rel.on{color:var(--alert)}
+  .sync{position:static;flex:1;text-align:center;font-size:26px;line-height:35px;
+        font-weight:500;color:var(--steel)}
 }
-
-
