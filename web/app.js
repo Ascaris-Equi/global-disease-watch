@@ -245,7 +245,7 @@ let heroSwapTimer = null;
 let heroTimer = null;
 
 const $ = function (s) { return document.querySelector(s); };
-const LV_COLOR = ['#79807F', '#D8D4C8', '#C0392B'];
+const LV_COLOR = ['#79807F', '#E0A048', '#C0392B'];
 
 function t(k) {
   const d = UI[lang] || UI.en;
@@ -848,11 +848,13 @@ ChainView.prototype.tick = function (time) {
    The 2d path is kept verbatim as the fallback for a browser without WebGL. */
 const GLOBE_WEBGL = true;              /* master switch: false → canvas-2d globe */
 const TEX_W = 4096, TEX_H = 2048;      /* equirectangular texture, ~32 MB */
-const TEX_OCEAN = '#0D1B29';
-const TEX_GRID = '#182C40', TEX_GRID_PX = 2.6, TEX_GRID_DEG = 15;
-const TEX_LAND = '#243A50';
-const TEX_COAST = '#42607C', TEX_COAST_PX = 3.0;
-const TEX_HOT_FILL = 'rgba(255,112,82,0.75)', TEX_HOT_STROKE = '#FFC4B2', TEX_HOT_PX = 4;
+const TEX_OCEAN = '#0A0C0D';
+const TEX_GRID = '#2B2419', TEX_GRID_PX = 2.6, TEX_GRID_DEG = 15;
+const TEX_LAND = '#22262A';
+const TEX_COAST = '#4B5257', TEX_COAST_PX = 3.0;
+const TEX_L1_FILL = 'rgba(224,160,72,0.30)', TEX_L1_STROKE = 'rgba(224,160,72,0.85)';
+const TEX_L2_FILL = 'rgba(192,57,43,0.42)', TEX_L2_STROKE = 'rgba(255,112,82,0.9)';
+const TEX_HOT_FILL = 'rgba(255,112,82,0.88)', TEX_HOT_STROKE = '#FFD9CB', TEX_HOT_PX = 4.5;
 /* the wpf light rig, straight from WallGlobe.cs */
 const GL_AMBIENT = [0.3608, 0.3922, 0.4549];   /* AmbientLight 92,100,116 */
 const GL_DIFFUSE = [0.7686, 0.7922, 0.8392];   /* DirectionalLight 196,202,214 */
@@ -1107,6 +1109,7 @@ GlobeView.prototype.setWorld = function (world) {
 };
 GlobeView.prototype.setData = function (markers, links, levels, hero) {
   this.markers = markers; this.links = links; this.levels = levels; this.hero = hero;
+  if (this.gl && !this.levelPainted && levels && levels.size) this.paintLevelTint();
   /* the texture carries one highlighted country; patch it only when the focus
      changes (once per carousel step, ~9 s — not per frame) */
   const iso = (hero && hero.iso) ? hero.iso : null;
@@ -1512,6 +1515,35 @@ GlobeView.prototype.buildBaseTexture = function () {
   ctx.lineWidth = TEX_COAST_PX;
   ctx.stroke(this.txLand);
   this.texStats.baseMs = +(performance.now() - t0).toFixed(1);
+};
+/* Alert tinting: every country that reports gets an amber (level 1) or red
+   (level 2) wash baked into the base texture, the way the wall colours all
+   reporting countries rather than only the featured one. Runs once, when the
+   level map first arrives from the snapshot. */
+GlobeView.prototype.paintLevelTint = function () {
+  if (!this.gl || !this.baseCtx || !this.levels) return;
+  const ctx = this.baseCtx;
+  let painted = 0;
+  for (const entry of this.levels) {
+    const iso = entry[0], lv = entry[1];
+    if (!lv) continue;
+    const p = this.txPaths.get(iso);
+    if (!p) continue;
+    ctx.fillStyle = lv >= 2 ? TEX_L2_FILL : TEX_L1_FILL;
+    ctx.fill(p);
+    ctx.strokeStyle = lv >= 2 ? TEX_L2_STROKE : TEX_L1_STROKE;
+    ctx.lineWidth = 2.2;
+    ctx.stroke(p);
+    painted++;
+  }
+  if (!painted) return;
+  const gl = this.gl;
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, this.tex);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.baseCanvas);
+  gl.generateMipmap(gl.TEXTURE_2D);
+  this.levelPainted = painted;
 };
 /* Bake the featured country into the texture: fill 255,112,82 at 0.75 over the
    land with a 255,196,178 edge, the wall's heat colours. The light multiplies
