@@ -2,7 +2,7 @@
 
 ![主界面](docs/images/hero.png)
 
-![30 秒实录](docs/images/preview.gif)
+![27 秒实录](docs/images/preview.gif)
 
 地球、关注度排行、传播链，每 9 秒轮播一条。
 
